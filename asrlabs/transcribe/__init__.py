@@ -54,3 +54,6 @@ def list_transcribers() -> list[dict]:
 
 # 前缀注册表——用于匹配 whisper-base/whisper-large-v3 等到同一个类
 _PREFIX_REGISTRY: dict[str, type[BaseTranscriber]] = {}
+
+# 导入具体后端触发注册
+from asrlabs.transcribe import whisper  # noqa: F401 — 确保 @register_transcriber 被执行
