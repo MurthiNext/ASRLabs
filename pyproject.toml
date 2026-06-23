@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta:__legacy__"
+
+[project]
+name = "asrlabs"
+version = "0.1.0"
+description = "ASR 工具箱——整合多款开源 ASR 模型，开箱即用"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.0",
+    "pyyaml>=6.0",
+    "stable-ts>=2.17",
+    "faster-whisper>=1.0",
+    "qwen-asr>=0.0.1",
+    "transformers>=4.52",
+    "torch>=2.0",
+    "torchaudio>=2.0",
+    "numpy>=1.24",
+    "tqdm>=4.0",
+]
+
+[project.optional-dependencies]
+cohere = ["cohere>=5.21"]
+
+[project.scripts]
+asrlab = "asrlabs.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["asrlabs*"]
