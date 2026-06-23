@@ -1,8 +1,11 @@
 """音频预处理——重采样、VAD 分段、静音检测"""
 
+import logging
 from pathlib import Path
 import numpy as np
 from asrlabs.config import AudioConfig
+
+logger = logging.getLogger(__name__)
 
 
 def preprocess_audio(
@@ -55,10 +58,13 @@ def _vad_split(
     try:
         import torch
 
+        logger.info("加载 Silero VAD 模型（首次自动下载，约 3MB）...")
         model, utils = torch.hub.load(
             repo_or_dir="snakers4/silero-vad",
             model="silero_vad",
             force_reload=False,
+            trust_repo=True,  # 跳过交互确认，首次自动下载
+            verbose=False,
         )
         (get_speech_timestamps, _, _, _, _) = utils
 
