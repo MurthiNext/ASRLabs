@@ -1,7 +1,7 @@
 """Cohere Transcribe 听写后端
 
-当前状态: 本地模式可用（transformers >= 4.52 + trust_remote_code），
-         云端 API 模式待后续支持。
+需要 transformers >= 5.4.0（原生支持 CohereAsrForConditionalGeneration）。
+云端 API 模式待后续支持。
 
 使用方式:
     from asrlabs.transcribe import CohereTranscriber
@@ -22,12 +22,7 @@ from asrlabs.transcribe.base import register_transcriber
 
 @register_transcriber
 class CohereTranscriber(BaseTranscriber):
-    """Cohere Transcribe 听写后端
-
-    模型命名: cohere-transcribe
-    当前支持: local 模式（HuggingFace transformers 本地运行，trust_remote_code=True）
-    后续计划: cloud 模式（Cohere API）
-    """
+    """Cohere Transcribe 听写后端（transformers >= 5.4.0 原生支持）"""
 
     name = "cohere-transcribe"
     display_name = "Cohere Transcribe"
@@ -35,28 +30,20 @@ class CohereTranscriber(BaseTranscriber):
     recommended_aligner = "qwen3_align"
 
     def load_model(self) -> None:
-        """加载本地 transformers 模型
-
-        Cohere Transcribe 的模型架构代码在 HF 仓库中（非 transformers 主线），
-        需要 trust_remote_code=True。后续 transformers >= 5.4.0 有原生支持。
-        """
-        from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
+        """加载 Cohere Transcribe 模型（本地 transformers）"""
+        from transformers import AutoProcessor, CohereAsrForConditionalGeneration
 
         model_path = self.model_path or "CohereLabs/cohere-transcribe-03-2026"
-
-        self._processor = AutoProcessor.from_pretrained(
-            model_path, trust_remote_code=True
-        )
-        self._model = AutoModelForSpeechSeq2Seq.from_pretrained(
+        self._processor = AutoProcessor.from_pretrained(model_path)
+        self._model = CohereAsrForConditionalGeneration.from_pretrained(
             model_path,
-            trust_remote_code=True,
             device_map=self.config.get("device", "auto"),
         )
 
     def transcribe(
         self, audio: str | np.ndarray, **kwargs
     ) -> TranscriptionResult:
-        """执行听写（当前仅本地模式）"""
+        """执行听写"""
         self._ensure_loaded()
 
         language = self.config.get("language", "auto")
