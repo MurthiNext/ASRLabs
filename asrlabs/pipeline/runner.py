@@ -207,6 +207,10 @@ class Runner:
 
         stem = audio.stem
         for fmt in self.cfg.output.formats:
+            # SRT 需要时间戳，无时间戳时跳过
+            if fmt == "srt" and not result.has_timestamps:
+                logger.warning("跳过 SRT：结果不含时间戳（模型 %s 不产出时间戳）", result.model)
+                continue
             out_path = output_dir / f"{stem}.{fmt}"
             result.save(out_path)
             logger.info(f"输出: {out_path}")
