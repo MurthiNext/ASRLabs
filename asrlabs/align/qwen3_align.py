@@ -80,14 +80,22 @@ class Qwen3Aligner(BaseAligner):
         if not chunks:
             return result
 
+        # 获取音频采样率
+        sr = self._get_audio_sr(audio)
+
         logger.info("切分为 %d 个块，逐块对齐...", len(chunks))
         aligned_segments = []
+        char_offset = 0  # 累计字符偏移，用于估算时间位置
         for i, chunk_segs in enumerate(chunks):
             try:
-                # 提取音频片段
-                chunk_start = chunk_segs[0].start if hasattr(chunk_segs[0], 'start') else 0.0
-                chunk_end = chunk_segs[-1].end if hasattr(chunk_segs[-1], 'end') else total_duration
-                chunk_audio = self._extract_audio_chunk(audio, chunk_start, chunk_end)
+                chunk_chars = sum(len(s.text) for s in chunk_segs)
+                # 按字符占比估算该块的起止时间
+                chunk_start = (char_offset / max(total_chars, 1)) * total_duration
+                chunk_end = ((char_offset + chunk_chars) / max(total_chars, 1)) * total_duration
+                char_offset += chunk_chars
+
+                chunk_audio = self._extract_audio_chunk(audio, chunk_start, chunk_end,
+                                                        total_duration, sr)
 
                 # 合并文本
                 chunk_text = " ".join(s.text.strip() for s in chunk_segs if s.text.strip())
@@ -98,8 +106,9 @@ class Qwen3Aligner(BaseAligner):
                 logger.info("  块 %d/%d: %.1f-%.1fs, %d 字符",
                             i + 1, len(chunks), chunk_start, chunk_end, len(chunk_text))
 
+                # Qwen3ForcedAligner 接受 (numpy_array, sample_rate) 元组
                 align_results = self._model.align(
-                    audio=chunk_audio,
+                    audio=(chunk_audio, sr),
                     text=chunk_text,
                     language=lang,
                 )
@@ -203,23 +212,33 @@ class Qwen3Aligner(BaseAligner):
 
         return chunks
 
+    def _get_audio_sr(self, audio: str | np.ndarray) -> int:
+        """获取音频采样率"""
+        if isinstance(audio, str):
+            import soundfile as sf
+            return sf.info(audio).samplerate
+        return 16000
+
     def _extract_audio_chunk(
         self,
         audio: str | np.ndarray,
         start_sec: float,
         end_sec: float,
+        total_duration: float,
+        sr: int,
     ) -> np.ndarray:
         """从音频中提取 [start_sec, end_sec] 片段"""
-        import soundfile as sf
+        # 加少量 padding 避免边界截断
+        pad = 0.3
+        start_sec = max(0, start_sec - pad)
+        end_sec = min(total_duration, end_sec + pad)
 
         if isinstance(audio, np.ndarray):
-            sr = 16000
             start_idx = int(start_sec * sr)
             end_idx = int(end_sec * sr)
-            return audio[start_idx:end_idx]
+            return audio[start_idx:end_idx].astype(np.float32)
 
-        # 流式读取，避免加载整个文件
-        sr = sf.info(audio).samplerate
+        import soundfile as sf
         start_frame = int(start_sec * sr)
         num_frames = int((end_sec - start_sec) * sr)
 

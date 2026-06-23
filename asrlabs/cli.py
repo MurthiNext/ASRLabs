@@ -195,10 +195,17 @@ def align(audio, reference, text, lang, aligner, config_path, model_path, device
     click.echo(f"使用对齐器: {aligner}")
     aligned = al.align(audio, result, language=lang if lang != "auto" else None)
 
-    # 输出
-    out_path = Path(audio).with_suffix(".aligned.srt")
-    aligned.save(out_path)
-    click.echo(f"对齐完成，输出: {out_path}")
+    # 输出：有時間戳输出 SRT，無時間戳输出 JSON+txt
+    if aligned.has_timestamps:
+        out_path = Path(audio).with_suffix(".aligned.srt")
+        aligned.save(out_path)
+        click.echo(f"对齐完成，输出: {out_path}")
+    else:
+        out_json = Path(audio).with_suffix(".aligned.json")
+        out_txt = Path(audio).with_suffix(".aligned.txt")
+        aligned.save(out_json)
+        aligned.save(out_txt)
+        click.echo(f"对齐完成（无时间戳），输出: {out_json}, {out_txt}")
 
 
 @main.group()
