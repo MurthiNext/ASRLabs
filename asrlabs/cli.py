@@ -87,7 +87,7 @@ def transcribe(audio, model, model_path, formats, lang, aligner, config_path,
                 device=device or "auto",
                 compute_type=compute_type or "float16",
             ),
-            aligner=AlignerConfig(name=aligner or ""),
+            aligner=AlignerConfig(name=aligner or "none"),
             audio=AudioConfig(),
             output=OutputConfig(
                 formats=[f.strip() for f in formats.split(",")],

@@ -159,13 +159,12 @@ class Runner:
 
     def _should_align(self, result: TranscriptionResult) -> bool:
         """判断是否需要对齐"""
-        if self.cfg.aligner.name == "none":
+        name = self.cfg.aligner.name
+        if name in ("none", "", None):
             return False
-        if result.has_timestamps and self.cfg.aligner.name == "":
+        if result.has_timestamps:
             return False
-        if self._get_aligner() is not None:
-            return True
-        return False
+        return True
 
     def _merge_results(
         self, results: list[TranscriptionResult]
