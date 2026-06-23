@@ -145,9 +145,11 @@ class Qwen3Aligner(BaseAligner):
 
     def _tokens_to_segment(self, align_results, time_offset):
         if not align_results or not align_results[0]:
+            logger.warning("_tokens_to_segment: align_results 为空")
             return None
         tokens = list(align_results[0])
         if not tokens:
+            logger.warning("_tokens_to_segment: tokens 列表为空")
             return None
         words = [
             Word(text=t.text,
@@ -166,10 +168,11 @@ class Qwen3Aligner(BaseAligner):
         for seg in segments:
             seg_chars = len(seg.text)
             if current_chars > 0 and (current_chars + seg_chars) / max(chars_per_sec, 1) > _MAX_AUDIO_SECONDS:
+                prev_end = plans[-1]["end_sec"] if plans else 0.0
                 plans.append({
                     "text": " ".join(s.text.strip() for s in current_segs),
-                    "start_sec": 0.0 if not plans else plans[-1]["end_sec"],
-                    "end_sec": 0.0 if not plans else plans[-1]["end_sec"] + current_chars / chars_per_sec,
+                    "start_sec": prev_end,
+                    "end_sec": prev_end + current_chars / chars_per_sec,
                 })
                 current_segs, current_chars = [], 0
             current_segs.append(seg)
