@@ -29,8 +29,8 @@ def main():
     help="本地模型路径或 HuggingFace ID（空则使用引擎默认）"
 )
 @click.option(
-    "-f", "--formats", default="json,srt,txt",
-    help="输出格式，逗号分隔: json,srt,txt"
+    "-f", "--formats", default="json",
+    help="输出格式，逗号分隔: json,srt,txt（transcribe 默认仅 json）"
 )
 @click.option("-l", "--lang", default="auto", help="语言代码")
 @click.option("--aligner", default=None, help="对齐器名称（whisper_align / qwen3_align）")
@@ -124,6 +124,8 @@ def transcribe(audio, model, model_path, formats, lang, aligner, config_path,
 @click.argument("audio", type=click.Path(exists=True))
 @click.argument("reference", required=False, type=click.Path(exists=True))
 @click.option("-t", "--text", default=None, help="直接指定文本（与 REFERENCE 互斥）")
+@click.option("-f", "--formats", default="srt,json,txt",
+              help="输出格式，逗号分隔: srt,json,txt（align 默认全部）")
 @click.option("-l", "--lang", default="auto", help="语言代码（纯文本时必需）")
 @click.option("--aligner", default="qwen3_align", help="对齐器: whisper_align / qwen3_align")
 @click.option("-c", "--config", "config_path", default=None,
@@ -138,7 +140,7 @@ def transcribe(audio, model, model_path, formats, lang, aligner, config_path,
     default=None,
     help="设备: cuda / cpu / vulkan / auto（默认 auto）"
 )
-def align(audio, reference, text, lang, aligner, config_path, model_path, device):
+def align(audio, reference, text, formats, lang, aligner, config_path, model_path, device):
     """对齐——为文本添加时间戳
 
     AUDIO: 音频文件路径
@@ -195,17 +197,16 @@ def align(audio, reference, text, lang, aligner, config_path, model_path, device
     click.echo(f"使用对齐器: {aligner}")
     aligned = al.align(audio, result, language=lang if lang != "auto" else None)
 
-    # 输出：有時間戳输出 SRT，無時間戳输出 JSON+txt
-    if aligned.has_timestamps:
-        out_path = Path(audio).with_suffix(".aligned.srt")
+    # 按 -f 格式列表输出
+    fmt_list = [f.strip() for f in formats.split(",")]
+    for fmt in fmt_list:
+        if fmt == "srt" and not aligned.has_timestamps:
+            click.echo("跳过 SRT：对齐结果不含时间戳")
+            continue
+        ext = ".aligned." + fmt
+        out_path = Path(audio).with_suffix(ext)
         aligned.save(out_path)
-        click.echo(f"对齐完成，输出: {out_path}")
-    else:
-        out_json = Path(audio).with_suffix(".aligned.json")
-        out_txt = Path(audio).with_suffix(".aligned.txt")
-        aligned.save(out_json)
-        aligned.save(out_txt)
-        click.echo(f"对齐完成（无时间戳），输出: {out_json}, {out_txt}")
+        click.echo(f"输出: {out_path}")
 
 
 @main.group()
@@ -265,7 +266,7 @@ audio:
 
 # ── 输出 ──
 output:
-  formats: [json, srt, txt]
+  formats: [json]                   # transcribe 默认仅 json；align 使用 -f 指定
   dir: ./output
   keep_segments: false
 

@@ -38,7 +38,7 @@ audio:
 
 # ── 输出 ──
 output:
-  formats: [json, srt, txt]        # 输出格式列表
+  formats: [json]                   # transcribe 默认仅 json；align 通过 -f 指定
   dir: ./output                    # 输出目录
   keep_segments: false             # 是否保留分段中间文件
 
