@@ -28,13 +28,20 @@ class GraniteSpeechTranscriber(BaseTranscriber):
         import torch
 
         model_path = self.model_path or "ibm-granite/granite-speech-4.1-2b"
+        device = self.config.get("device", "auto")
+        if device == "cpu" or (device == "auto" and not torch.cuda.is_available()):
+            dtype = torch.float32
+        else:
+            dtype = torch.bfloat16
 
         self._model = AutoModelForSpeechSeq2Seq.from_pretrained(
             model_path,
-            device_map=self.config.get("device", "auto"),
-            torch_dtype=torch.bfloat16,
+            device_map=device,
+            dtype=dtype,
         )
-        self._processor = AutoProcessor.from_pretrained(model_path)
+        self._processor = AutoProcessor.from_pretrained(
+            model_path, fix_mistral_regex=True,
+        )
         self._tokenizer = self._processor.tokenizer
 
     def transcribe(
@@ -46,11 +53,16 @@ class GraniteSpeechTranscriber(BaseTranscriber):
 
         # 加载音频
         if isinstance(audio, str):
+            import soundfile as sf
             import torchaudio
-            wav, sr = torchaudio.load(audio, normalize=True)
+            wav_np, sr = sf.read(audio, dtype="float32")
+            if wav_np.ndim > 1:
+                wav_np = wav_np.mean(axis=1)
             if sr != 16000:
-                resampler = torchaudio.transforms.Resample(sr, 16000)
-                wav = resampler(wav)
+                t = torch.from_numpy(wav_np).unsqueeze(0)
+                wav = torchaudio.transforms.Resample(sr, 16000)(t)
+            else:
+                wav = torch.from_numpy(wav_np).unsqueeze(0)
         else:
             wav = torch.from_numpy(audio).float()
             if wav.ndim == 1:
