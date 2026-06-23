@@ -70,7 +70,8 @@ class CohereTranscriber(BaseTranscriber):
             audio_array = audio
 
         inputs = self._processor(
-            audio_array, sampling_rate=16000, return_tensors="pt",
+            audio=audio_array, sampling_rate=16000, return_tensors="pt",
+            language=language,
         ).to(self._model.device)
 
         with torch.no_grad():
