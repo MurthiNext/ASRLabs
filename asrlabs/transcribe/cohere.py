@@ -78,7 +78,12 @@ class CohereTranscriber(BaseTranscriber):
         ).to(device=self._model.device, dtype=self._model.dtype)
 
         with torch.no_grad():
-            outputs = self._model.generate(**inputs, max_new_tokens=256)
+            outputs = self._model.generate(
+                **inputs,
+                max_new_tokens=256,
+                do_sample=False,
+                num_beams=1,
+            )
 
         text = self._processor.decode(outputs[0], skip_special_tokens=True)
 
