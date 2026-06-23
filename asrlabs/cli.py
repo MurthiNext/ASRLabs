@@ -36,8 +36,8 @@ def main():
 @click.option("--aligner", default=None, help="对齐器名称（whisper_align / qwen3_align）")
 @click.option("-c", "--config", "config_path", default=None,
               type=click.Path(exists=True), help="配置文件路径")
-@click.option("-o", "--output-dir", default=None, help="输出目录")
-@click.option("--batch", is_flag=True, help="批量处理目录")
+@click.option("-o", "--output-dir", default=None, help="输出路径: 目录或文件 stem（如 -o result 生成 result.json）")
+@click.option("--batch", is_flag=True, help="批量处理目录（-o 必须为目录）")
 @click.option(
     "--device",
     type=click.Choice(["cuda", "cpu", "vulkan", "auto"]),
@@ -111,6 +111,11 @@ def transcribe(audio, model, model_path, formats, lang, aligner, config_path,
 
     audio_path = Path(audio)
     if batch or audio_path.is_dir():
+        # 批量模式：-o 必须为目录
+        if output_dir:
+            out = Path(output_dir)
+            if out.suffix:  # 有扩展名 → 是文件路径，批量模式下不允许
+                raise click.UsageError("批量模式下 -o 必须为目录，不能指定文件名")
         results = runner.run_batch(audio_path)
         click.echo(f"批量处理完成，共 {len(results)} 个文件")
     else:
@@ -128,6 +133,7 @@ def transcribe(audio, model, model_path, formats, lang, aligner, config_path,
               help="输出格式，逗号分隔: json,srt,txt")
 @click.option("-l", "--lang", default="auto", help="语言代码（纯文本时必需）")
 @click.option("--aligner", default="qwen3_align", help="对齐器: whisper_align / qwen3_align")
+@click.option("-o", "--output-dir", default=None, help="输出路径（目录或文件 stem）")
 @click.option("-c", "--config", "config_path", default=None,
               type=click.Path(exists=True), help="配置文件路径")
 @click.option(
@@ -140,7 +146,7 @@ def transcribe(audio, model, model_path, formats, lang, aligner, config_path,
     default=None,
     help="设备: cuda / cpu / vulkan / auto（默认 auto）"
 )
-def align(audio, reference, text, formats, lang, aligner, config_path, model_path, device):
+def align(audio, reference, text, formats, lang, aligner, output_dir, config_path, model_path, device):
     """对齐——为文本添加时间戳
 
     AUDIO: 音频文件路径
@@ -211,8 +217,16 @@ def align(audio, reference, text, formats, lang, aligner, config_path, model_pat
         if fmt == "srt" and not aligned.has_timestamps:
             click.echo("跳过 SRT：对齐结果不含时间戳")
             continue
-        ext = ".aligned." + fmt
-        out_path = Path(audio).with_suffix(ext)
+        if output_dir:
+            out = Path(output_dir)
+            if out.suffix and out.suffix.lstrip(".") in ("json", "srt", "txt"):
+                stem = str(out.with_suffix(""))
+            else:
+                out.mkdir(parents=True, exist_ok=True)
+                stem = str(out / Path(audio).stem)
+            out_path = Path(f"{stem}.{fmt}")
+        else:
+            out_path = Path(audio).with_suffix(f".aligned.{fmt}")
         aligned.save(out_path)
         click.echo(f"输出: {out_path}")
 
