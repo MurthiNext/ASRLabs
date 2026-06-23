@@ -1,11 +1,15 @@
 """Cohere Transcribe 听写后端
 
-当前状态: 本地模式可用，云端 API 模式待后续支持。
+当前状态: 本地模式可用（transformers >= 4.52 + trust_remote_code），
+         云端 API 模式待后续支持。
 
-使用方式（需手动导入）:
-    from asrlabs.transcribe.cohere import CohereTranscriber
-    t = CohereTranscriber({"model": "cohere-transcribe", "device": "cuda",
-                           "extras": {"mode": "local"}})
+使用方式:
+    from asrlabs.transcribe import CohereTranscriber
+    t = CohereTranscriber({
+        "model": "cohere-transcribe",
+        "model_path": "CohereLabs/cohere-transcribe-03-2026",  # 或本地路径
+        "device": "cuda",
+    })
     t.load_model()
     result = t.transcribe("audio.wav")
 """
@@ -21,7 +25,7 @@ class CohereTranscriber(BaseTranscriber):
     """Cohere Transcribe 听写后端
 
     模型命名: cohere-transcribe
-    当前支持: local 模式（HuggingFace transformers 本地运行）
+    当前支持: local 模式（HuggingFace transformers 本地运行，trust_remote_code=True）
     后续计划: cloud 模式（Cohere API）
     """
 
@@ -33,16 +37,20 @@ class CohereTranscriber(BaseTranscriber):
     def load_model(self) -> None:
         """加载本地 transformers 模型
 
-        TODO: 后续支持 cloud 模式时，根据 config.extras.mode 切换
-              mode == "cloud" → cohere.ClientV2(api_key=...)
-              mode == "local" → 当前逻辑
+        Cohere Transcribe 的模型架构代码在 HF 仓库中（非 transformers 主线），
+        需要 trust_remote_code=True。后续 transformers >= 5.4.0 有原生支持。
         """
-        from transformers import AutoProcessor, CohereAsrForConditionalGeneration
+        from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
 
-        model_id = "CohereLabs/cohere-transcribe-03-2026"
-        self._processor = AutoProcessor.from_pretrained(model_id)
-        self._model = CohereAsrForConditionalGeneration.from_pretrained(
-            model_id, device_map=self.config.get("device", "auto")
+        model_path = self.model_path or "CohereLabs/cohere-transcribe-03-2026"
+
+        self._processor = AutoProcessor.from_pretrained(
+            model_path, trust_remote_code=True
+        )
+        self._model = AutoModelForSpeechSeq2Seq.from_pretrained(
+            model_path,
+            trust_remote_code=True,
+            device_map=self.config.get("device", "auto"),
         )
 
     def transcribe(
@@ -55,28 +63,12 @@ class CohereTranscriber(BaseTranscriber):
         if language == "auto":
             language = "en"
 
-        # TODO: 后续支持 cloud 模式分支
         return self._transcribe_local(audio, language)
 
     # ── 云端模式 —— 后续支持 ──
     # def _transcribe_cloud(self, audio, language):
     #     """通过 Cohere 云端 API 听写（TODO）"""
-    #     if isinstance(audio, np.ndarray):
-    #         raise ValueError("Cohere 云端模式需要文件路径，不支持 numpy 数组")
-    #     with open(audio, "rb") as f:
-    #         response = self._client.audio.transcriptions.create(
-    #             model="cohere-transcribe-03-2026",
-    #             language=language,
-    #             file=f,
-    #         )
-    #     text = response.text if hasattr(response, "text") else str(response)
-    #     return TranscriptionResult(
-    #         text=text.strip(),
-    #         segments=[Segment(text.strip(), 0.0, 0.0)],
-    #         language=language,
-    #         model="cohere-transcribe",
-    #         has_timestamps=False,
-    #     )
+    #     ...
 
     def _transcribe_local(
         self, audio: str | np.ndarray, language: str
@@ -91,7 +83,7 @@ class CohereTranscriber(BaseTranscriber):
             audio_array = audio
 
         inputs = self._processor(
-            audio_array, sampling_rate=16000, return_tensors="pt", language=language
+            audio_array, sampling_rate=16000, return_tensors="pt",
         ).to(self._model.device)
 
         with torch.no_grad():
