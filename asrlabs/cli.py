@@ -30,7 +30,7 @@ def main():
 )
 @click.option(
     "-f", "--formats", default="json",
-    help="输出格式，逗号分隔: json,srt,txt（transcribe 默认仅 json）"
+    help="输出格式，逗号分隔: json,srt,txt"
 )
 @click.option("-l", "--lang", default="auto", help="语言代码")
 @click.option("--aligner", default=None, help="对齐器名称（whisper_align / qwen3_align）")
@@ -124,8 +124,8 @@ def transcribe(audio, model, model_path, formats, lang, aligner, config_path,
 @click.argument("audio", type=click.Path(exists=True))
 @click.argument("reference", required=False, type=click.Path(exists=True))
 @click.option("-t", "--text", default=None, help="直接指定文本（与 REFERENCE 互斥）")
-@click.option("-f", "--formats", default="srt,json,txt",
-              help="输出格式，逗号分隔: srt,json,txt（align 默认全部）")
+@click.option("-f", "--formats", default="json",
+              help="输出格式，逗号分隔: json,srt,txt")
 @click.option("-l", "--lang", default="auto", help="语言代码（纯文本时必需）")
 @click.option("--aligner", default="qwen3_align", help="对齐器: whisper_align / qwen3_align")
 @click.option("-c", "--config", "config_path", default=None,
