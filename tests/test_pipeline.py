@@ -55,7 +55,7 @@ class TestRunner:
     def test_runner_single_file(self, monkeypatch):
         """测试 Runner 单文件处理流程"""
         # 注册 mock 模型
-        from asrlabs.transcribe import TRANSCRIBER_REGISTRY, _PREFIX_REGISTRY
+        from asrlabs.transcribe import TRANSCRIBER_REGISTRY
         monkeypatch.setitem(TRANSCRIBER_REGISTRY, "mock", MockTranscriber)
 
         # 模拟预处理步骤，避免实际加载音频文件

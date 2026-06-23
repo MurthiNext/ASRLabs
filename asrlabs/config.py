@@ -13,7 +13,8 @@ import yaml
 @dataclass
 class TranscriberConfig:
     """听写模型配置"""
-    model: str = "whisper-base"
+    model: str = "whisper"  # 引擎名: whisper, faster-whisper, qwen3-asr, granite-speech
+    model_path: str = ""    # 本地模型路径/ID，空则使用引擎默认
     device: str = "auto"
     compute_type: str = "float16"
     language: str = "auto"
@@ -124,7 +125,8 @@ def load_config(path: str | Path) -> ProjectConfig:
 
     tc_raw = raw["transcriber"]
     transcriber = TranscriberConfig(
-        model=tc_raw.get("model", "whisper-base"),
+        model=tc_raw.get("model", "whisper"),
+        model_path=tc_raw.get("model_path", ""),
         device=tc_raw.get("device", "auto"),
         compute_type=tc_raw.get("compute_type", "float16"),
         language=tc_raw.get("language", "auto"),

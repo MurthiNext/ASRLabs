@@ -30,9 +30,10 @@ class BaseTranscriber(ABC):
         """初始化听写后端
 
         Args:
-            config: 配置字典，至少包含 device, compute_type, language, beam_size, extras
+            config: 配置字典，至少包含 model_path, device, compute_type, language, beam_size, extras
         """
         self.config = config
+        self.model_path = config.get("model_path", "")  # 本地模型路径，空则用默认
         self._model = None
         self._loaded = False
 
@@ -75,10 +76,7 @@ class BaseTranscriber(ABC):
 # ── 注册表基础设施 ──
 
 TRANSCRIBER_REGISTRY: dict[str, type[BaseTranscriber]] = {}
-"""全局注册表：{模型名称: 后端类}"""
-
-_PREFIX_REGISTRY: dict[str, type[BaseTranscriber]] = {}
-"""前缀注册表：用于匹配 whisper-base/whisper-large-v3 等到同一个类"""
+"""全局注册表：{引擎名: 后端类}"""
 
 
 def register_transcriber(cls: type[BaseTranscriber]) -> type[BaseTranscriber]:
@@ -90,29 +88,22 @@ def register_transcriber(cls: type[BaseTranscriber]) -> type[BaseTranscriber]:
 
 
 def get_transcriber(name: str, config: dict) -> BaseTranscriber:
-    """工厂方法：按名称创建听写后端实例
+    """工厂方法：按引擎名创建听写后端实例
 
     Args:
-        name: 模型名称，如 "whisper-base", "faster-whisper-large-v3"
-        config: 配置字典
+        name: 引擎名，如 "whisper", "faster-whisper"
+        config: 配置字典（含 model_path, device, language 等）
 
     Returns:
         BaseTranscriber 实例
 
     Raises:
-        ValueError: 未知的模型名称
+        ValueError: 未知的引擎名
     """
-    # 精确匹配
-    if name in TRANSCRIBER_REGISTRY:
-        return TRANSCRIBER_REGISTRY[name](config)
-
-    # 前缀匹配（如 whisper-large-v3 → whisper- 前缀 → WhisperTranscriber）
-    for prefix, cls in _PREFIX_REGISTRY.items():
-        if name.startswith(prefix):
-            return cls(config)
-
-    available = ", ".join(TRANSCRIBER_REGISTRY.keys())
-    raise ValueError(f"未知的听写模型: {name}，可用模型: {available}")
+    if name not in TRANSCRIBER_REGISTRY:
+        available = ", ".join(TRANSCRIBER_REGISTRY.keys())
+        raise ValueError(f"未知的听写引擎: {name}，可用引擎: {available}")
+    return TRANSCRIBER_REGISTRY[name](config)
 
 
 def list_transcribers() -> list[dict]:

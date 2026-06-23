@@ -21,8 +21,12 @@ def main():
 @main.command()
 @click.argument("audio", type=click.Path(exists=True))
 @click.option(
-    "-m", "--model", default="whisper-base",
-    help="本地模型: whisper-base, faster-whisper-large-v3, qwen3-asr-1.7b, granite-speech-2b ..."
+    "-m", "--model", default="whisper",
+    help="引擎名: whisper | faster-whisper | qwen3-asr | granite-speech"
+)
+@click.option(
+    "--model-path", default=None,
+    help="本地模型路径或 HuggingFace ID（空则使用引擎默认）"
 )
 @click.option(
     "-f", "--formats", default="json,srt,txt",
@@ -46,14 +50,15 @@ def main():
     default=None,
     help="计算精度: float16 / int8 / float32（默认 float16）"
 )
-def transcribe(audio, model, formats, lang, aligner, config_path,
+def transcribe(audio, model, model_path, formats, lang, aligner, config_path,
                output_dir, batch, device, compute_type):
     """听写——音频转文本
 
     AUDIO: 音频文件路径或目录（--batch 批量处理时）
     """
     if config_path:
-        runner = Runner(config_path, device=device, compute_type=compute_type)
+        runner = Runner(config_path, device=device, compute_type=compute_type,
+                        model_path=model_path)
         # 用 CLI 参数覆盖配置
         if model:
             runner.cfg.transcriber.model = model
@@ -77,6 +82,7 @@ def transcribe(audio, model, formats, lang, aligner, config_path,
         runner.cfg = ProjectConfig(
             transcriber=TranscriberConfig(
                 model=model,
+                model_path=model_path or "",
                 language=lang,
                 device=device or "auto",
                 compute_type=compute_type or "float16",
@@ -92,7 +98,9 @@ def transcribe(audio, model, formats, lang, aligner, config_path,
         runner._transcriber = None
         runner._aligner = None
         runner._transcriber_config = {
-            "model": model, "device": device or "auto",
+            "model": model,
+            "model_path": model_path or "",
+            "device": device or "auto",
             "compute_type": compute_type or "float16", "language": lang,
             "beam_size": 5, "extras": {},
         }
@@ -210,15 +218,16 @@ def init():
     config_content = """# ASRLabs 项目配置
 # 生成方式: asrlab init
 #
-# 可用本地模型:
-#   whisper-base / whisper-large-v3         — OpenAI Whisper (stable-ts)
-#   faster-whisper-base / faster-whisper-large-v3 — Faster Whisper (CTranslate2, 支持 vulkan)
-#   qwen3-asr-0.6b / qwen3-asr-1.7b         — Qwen3 ASR
-#   granite-speech-2b / granite-speech-2b-plus — IBM Granite Speech
+# 可用引擎:
+#   whisper          — OpenAI Whisper (stable-ts), --model-path 指定尺寸/路径
+#   faster-whisper   — Faster Whisper (CTranslate2, 支持 vulkan)
+#   qwen3-asr        — Qwen3 ASR, --model-path 指定 HF ID 或本地路径
+#   granite-speech   — IBM Granite Speech, --model-path 指定 HF ID 或本地路径
 
 # ── 听写模型 ──
 transcriber:
-  model: whisper-base              # 本地模型名
+  model: whisper                   # 引擎名: whisper | faster-whisper | qwen3-asr | granite-speech
+  model_path: ""                   # 本地模型路径（空则使用引擎默认）
   device: auto                     # cuda | cpu | vulkan | auto
   compute_type: float16            # float16 | int8 | float32（仅 faster-whisper / vulkan）
   language: auto                   # auto | zh | en | ja | ko ...

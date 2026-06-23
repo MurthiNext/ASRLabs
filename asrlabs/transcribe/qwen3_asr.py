@@ -3,7 +3,7 @@
 import numpy as np
 from asrlabs.models import TranscriptionResult, Segment
 from asrlabs.transcribe.base import BaseTranscriber
-from asrlabs.transcribe.base import register_transcriber, _PREFIX_REGISTRY
+from asrlabs.transcribe.base import register_transcriber
 
 
 @register_transcriber
@@ -13,21 +13,25 @@ class Qwen3ASRTranscriber(BaseTranscriber):
     模型命名: qwen3-asr-0.6b, qwen3-asr-1.7b
     """
 
-    name = "qwen3-asr-1.7b"
+    name = "qwen3-asr"
     display_name = "Qwen3 ASR"
     supports_timestamps = False  # 需要 forced_aligner 才有时间戳
     recommended_aligner = "qwen3_align"
 
     def load_model(self) -> None:
-        """加载 Qwen3 ASR 模型"""
+        """加载 Qwen3 ASR 模型
+
+        model_path 为空时默认使用 Qwen/Qwen3-ASR-1.7B，
+        否则可以是 HuggingFace 模型 ID 或本地缓存路径。
+        """
         from qwen_asr import Qwen3ASRModel
         import torch
 
-        model_name = self._get_hf_model_name()
+        model_path = self.model_path or "Qwen/Qwen3-ASR-1.7B"
         device = self.config.get("device", "auto")
 
         self._model = Qwen3ASRModel.from_pretrained(
-            model_name,
+            model_path,
             dtype=torch.bfloat16,
             device_map=device if device != "cpu" else None,
         )
@@ -49,7 +53,7 @@ class Qwen3ASRTranscriber(BaseTranscriber):
             return TranscriptionResult(
                 text="",
                 language=language or "auto",
-                model=self.config.get("model", "qwen3-asr-1.7b"),
+                model=self.name,
             )
 
         full_text = " ".join(r.text for r in results if r.text)
@@ -67,15 +71,6 @@ class Qwen3ASRTranscriber(BaseTranscriber):
             text=full_text.strip(),
             segments=segments if segments else [Segment(full_text.strip(), 0.0, 0.0)],
             language=detected_lang,
-            model=self.config.get("model", "qwen3-asr-1.7b"),
+            model=self.name,
             has_timestamps=False,
         )
-
-    def _get_hf_model_name(self) -> str:
-        """将模型名转换为 HuggingFace 模型 ID"""
-        model = self.config.get("model", "qwen3-asr-1.7b")
-        variant = model.split("-", 2)[2]  # 1.7b 或 0.6b
-        return f"Qwen/Qwen3-ASR-{variant.upper()}"
-
-
-_PREFIX_REGISTRY["qwen3-asr-"] = Qwen3ASRTranscriber

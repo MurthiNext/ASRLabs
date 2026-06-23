@@ -28,6 +28,7 @@ class Runner:
         config_path: str | Path,
         device: str | None = None,
         compute_type: str | None = None,
+        model_path: str | None = None,
     ):
         """初始化 Runner
 
@@ -35,21 +36,25 @@ class Runner:
             config_path: YAML 配置文件路径
             device: 覆盖设备类型 (cuda/cpu/vulkan)，None 则使用配置值
             compute_type: 覆盖计算精度 (float16/int8)，None 则使用配置值
+            model_path: 覆盖模型路径，None 则使用配置值
         """
         self.cfg = load_config(config_path)
 
-        # 允许 CLI 参数覆盖配置中的 device / compute_type
+        # 允许 CLI 参数覆盖配置中的值
         tc = self.cfg.transcriber
         if device is not None:
             tc.device = device
         if compute_type is not None:
             tc.compute_type = compute_type
+        if model_path is not None:
+            tc.model_path = model_path
 
         self._setup_logging()
 
         # 构建配置字典（透传给后端）
         self._transcriber_config = {
             "model": tc.model,
+            "model_path": tc.model_path,
             "device": tc.device,
             "compute_type": tc.compute_type,
             "language": tc.language,

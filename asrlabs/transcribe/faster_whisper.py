@@ -3,7 +3,7 @@
 import numpy as np
 from asrlabs.models import TranscriptionResult, Segment, Word
 from asrlabs.transcribe.base import BaseTranscriber
-from asrlabs.transcribe.base import register_transcriber, _PREFIX_REGISTRY
+from asrlabs.transcribe.base import register_transcriber
 
 
 @register_transcriber
@@ -14,24 +14,27 @@ class FasterWhisperTranscriber(BaseTranscriber):
               faster-whisper-large-v3
     """
 
-    name = "faster-whisper-base"
+    name = "faster-whisper"
     display_name = "Faster Whisper (CTranslate2 via stable-ts)"
     supports_timestamps = True
     recommended_aligner = "whisper_align"
 
     def load_model(self) -> None:
-        """加载 Faster Whisper 模型（通过 stable-ts load_faster_whisper）"""
+        """加载 Faster Whisper 模型（通过 stable-ts load_faster_whisper）
+
+        model_path 为空时使用 "base"，否则可以是本地 CTranslate2 格式目录
+        或 stable-ts 尺寸名（tiny/base/small/medium/large-v3）。
+        """
         import stable_whisper
 
-        # 提取模型尺寸（faster-whisper-large-v3 → large-v3）
-        size = self.config.get("model", self.name).split("-", 2)[2]
+        model_path = self.model_path or "base"
         device = self.config.get("device", "auto")
         compute_type = self.config.get("compute_type", "float16")
         if device == "auto":
             device = "cuda" if self._cuda_available() else "cpu"
 
         self._model = stable_whisper.load_faster_whisper(
-            size, device=device, compute_type=compute_type
+            model_path, device=device, compute_type=compute_type
         )
 
     def transcribe(
@@ -79,7 +82,7 @@ class FasterWhisperTranscriber(BaseTranscriber):
             segments=segments,
             language=getattr(result, "language", "auto"),
             duration=getattr(result, "duration", 0.0),
-            model=self.config.get("model", "faster-whisper-base"),
+            model=self.name,
             has_timestamps=True,
         )
 
@@ -91,5 +94,3 @@ class FasterWhisperTranscriber(BaseTranscriber):
         except ImportError:
             return False
 
-
-_PREFIX_REGISTRY["faster-whisper-"] = FasterWhisperTranscriber

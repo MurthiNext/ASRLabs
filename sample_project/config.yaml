@@ -3,18 +3,19 @@
 # 或直接指定模型: asrlab transcribe audio.wav -m whisper-base --device cuda
 
 # ═══════════════════════════════════════════════════════════════
-# 本地模型预设（可直接复制到 transcriber.model 使用）
+# 可用引擎（通过 --model 指定，通过 --model-path 指定模型位置）
 # ═══════════════════════════════════════════════════════════════
 #
-# whisper-base / whisper-large-v3      — OpenAI Whisper (stable-ts)
-# faster-whisper-base / faster-whisper-large-v3 — Faster Whisper (CTranslate2, 支持 vulkan)
-# qwen3-asr-0.6b / qwen3-asr-1.7b     — Qwen3 ASR
-# granite-speech-2b / granite-speech-2b-plus — IBM Granite Speech
-# cohere-transcribe                    — Cohere Transcribe（云端暂未启用）
+# whisper          — OpenAI Whisper (stable-ts), model-path 默认 "base"
+# faster-whisper   — Faster Whisper (CTranslate2, 支持 vulkan)
+# qwen3-asr        — Qwen3 ASR, model-path 默认 Qwen/Qwen3-ASR-1.7B
+# granite-speech   — IBM Granite Speech, model-path 默认 ibm-granite/granite-speech-4.1-2b
+# cohere-transcribe — Cohere Transcribe（云端暂未启用）
 
 # ── 听写模型 ──
 transcriber:
-  model: whisper-base              # 本地模型: whisper-base | faster-whisper-base | qwen3-asr-1.7b | granite-speech-2b
+  model: whisper                   # 引擎名: whisper | faster-whisper | qwen3-asr | granite-speech
+  model_path: ""                   # 本地模型路径（空则使用引擎默认模型）
   device: auto                     # cuda | cpu | vulkan | auto
   compute_type: float16            # float16 | int8 | float32（仅 faster-whisper / vulkan）
   language: auto                   # auto | zh | en | ja | ko ...
@@ -47,12 +48,13 @@ logging:
   file: null                       # null = 输出到 stderr
 
 # ═══════════════════════════════════════════════════════════════
-# 各模型推荐配置（复制对应块覆盖上方 transcriber 即可）
+# 各引擎推荐配置（复制对应块覆盖上方 transcriber 即可使用）
 # ═══════════════════════════════════════════════════════════════
 
 # ── Whisper 推荐配置 ──
 # transcriber:
-#   model: whisper-large-v3
+#   model: whisper
+#   model_path: large-v3             # stable-ts 尺寸名或本地 .pt 路径
 #   device: cuda
 #   language: auto
 #   beam_size: 5
@@ -62,9 +64,10 @@ logging:
 
 # ── Faster Whisper 推荐配置（速度快、支持 vulkan） ──
 # transcriber:
-#   model: faster-whisper-large-v3
-#   device: cuda                    # 也支持 vulkan
-#   compute_type: float16           # vulkan 建议 int8
+#   model: faster-whisper
+#   model_path: large-v3             # stable-ts 尺寸名或本地 CTranslate2 目录
+#   device: cuda                     # 也支持 vulkan
+#   compute_type: float16            # vulkan 建议 int8
 #   language: auto
 #   beam_size: 5
 #   extras:
@@ -72,14 +75,16 @@ logging:
 
 # ── Qwen3 ASR 推荐配置 ──
 # transcriber:
-#   model: qwen3-asr-1.7b
+#   model: qwen3-asr
+#   model_path: Qwen/Qwen3-ASR-1.7B  # HF 模型 ID 或本地缓存路径
 #   device: cuda
-#   language: auto                  # 支持 30+ 语言 + 22 方言
+#   language: auto
 #   extras: {}
 
 # ── Granite Speech 推荐配置 ──
 # transcriber:
-#   model: granite-speech-2b
+#   model: granite-speech
+#   model_path: ibm-granite/granite-speech-4.1-2b  # HF 模型 ID 或本地路径
 #   device: cuda
 #   language: auto
 #   extras: {}
@@ -87,7 +92,8 @@ logging:
 # ── Cohere Transcribe（本地模式，云端暂未启用） ──
 # transcriber:
 #   model: cohere-transcribe
+#   model_path: CohereLabs/cohere-transcribe-03-2026
 #   device: cuda
 #   language: auto
 #   extras:
-#     mode: local                   # 仅本地模式；cloud 待后续支持
+#     mode: local

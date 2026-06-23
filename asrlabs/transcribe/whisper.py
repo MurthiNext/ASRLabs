@@ -3,7 +3,7 @@
 import numpy as np
 from asrlabs.models import TranscriptionResult, Segment, Word
 from asrlabs.transcribe.base import BaseTranscriber
-from asrlabs.transcribe.base import register_transcriber, _PREFIX_REGISTRY
+from asrlabs.transcribe.base import register_transcriber
 
 
 @register_transcriber
@@ -14,22 +14,25 @@ class WhisperTranscriber(BaseTranscriber):
               whisper-medium, whisper-large-v3
     """
 
-    name = "whisper-base"  # 注册名（前缀匹配: whisper-*）
+    name = "whisper"
     display_name = "OpenAI Whisper (stable-ts)"
     supports_timestamps = True
     recommended_aligner = "whisper_align"
 
     def load_model(self) -> None:
-        """加载 Whisper 模型（通过 stable-ts）"""
+        """加载 Whisper 模型（通过 stable-ts）
+
+        model_path 为空时使用 "base"（stable-ts 内置尺寸），
+        否则可以是本地 .pt 文件路径或 stable-ts 尺寸名（tiny/base/small/medium/large-v3）。
+        """
         import stable_whisper
 
-        # 提取模型尺寸（如 whisper-base → base）
-        size = self.config.get("model", self.name).split("-", 1)[1]
+        model_path = self.model_path or "base"
         device = self.config.get("device", "auto")
         if device == "auto":
             device = "cuda" if self._cuda_available() else "cpu"
 
-        self._model = stable_whisper.load_model(size, device=device)
+        self._model = stable_whisper.load_model(model_path, device=device)
 
     def transcribe(
         self, audio: str | np.ndarray, **kwargs
@@ -76,7 +79,7 @@ class WhisperTranscriber(BaseTranscriber):
             segments=segments,
             language=getattr(result, "language", "auto"),
             duration=getattr(result, "duration", 0.0),
-            model=self.config.get("model", "whisper-base"),
+            model=self.name,
             has_timestamps=True,
         )
 
@@ -88,6 +91,3 @@ class WhisperTranscriber(BaseTranscriber):
         except ImportError:
             return False
 
-
-# 注册前缀匹配——使 whisper-tiny/whisper-small 等都路由到此类
-_PREFIX_REGISTRY["whisper-"] = WhisperTranscriber

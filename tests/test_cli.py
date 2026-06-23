@@ -59,7 +59,7 @@ def test_init_generates_config():
             assert Path("config.yaml").exists()
             content = Path("config.yaml").read_text()
             assert "transcriber:" in content
-            assert "whisper-base" in content
+            assert "whisper" in content
         finally:
             os.chdir(orig_cwd)
 

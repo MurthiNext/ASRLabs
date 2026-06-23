@@ -3,7 +3,7 @@
 import numpy as np
 from asrlabs.models import TranscriptionResult, Segment
 from asrlabs.transcribe.base import BaseTranscriber
-from asrlabs.transcribe.base import register_transcriber, _PREFIX_REGISTRY
+from asrlabs.transcribe.base import register_transcriber
 
 
 @register_transcriber
@@ -13,24 +13,28 @@ class GraniteSpeechTranscriber(BaseTranscriber):
     模型命名: granite-speech-2b, granite-speech-2b-plus, granite-speech-8b
     """
 
-    name = "granite-speech-2b"
+    name = "granite-speech"
     display_name = "IBM Granite Speech"
     supports_timestamps = False  # 基础版无时间戳，2b-plus 有
     recommended_aligner = "qwen3_align"
 
     def load_model(self) -> None:
-        """加载 Granite Speech 模型"""
+        """加载 Granite Speech 模型
+
+        model_path 为空时默认使用 ibm-granite/granite-speech-4.1-2b，
+        否则可以是 HuggingFace 模型 ID 或本地缓存路径。
+        """
         from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
         import torch
 
-        model_id = self._get_hf_model_name()
+        model_path = self.model_path or "ibm-granite/granite-speech-4.1-2b"
 
         self._model = AutoModelForSpeechSeq2Seq.from_pretrained(
-            model_id,
+            model_path,
             device_map=self.config.get("device", "auto"),
             torch_dtype=torch.bfloat16,
         )
-        self._processor = AutoProcessor.from_pretrained(model_id)
+        self._processor = AutoProcessor.from_pretrained(model_path)
         self._tokenizer = self._processor.tokenizer
 
     def transcribe(
@@ -77,21 +81,6 @@ class GraniteSpeechTranscriber(BaseTranscriber):
             text=text.strip(),
             segments=[Segment(text.strip(), 0.0, 0.0)],
             language=self.config.get("language", "auto"),
-            model=self.config.get("model", "granite-speech-2b"),
+            model=self.name,
             has_timestamps=False,
         )
-
-    def _get_hf_model_name(self) -> str:
-        """将模型名转换为 HuggingFace 模型 ID"""
-        model = self.config.get("model", "granite-speech-2b")
-        variant = model.split("-", 2)[2]  # 2b / 2b-plus / 8b
-        # 映射: 2b → granite-speech-4.1-2b, 2b-plus → granite-speech-4.1-2b-plus
-        model_map = {
-            "2b": "ibm-granite/granite-speech-4.1-2b",
-            "2b-plus": "ibm-granite/granite-speech-4.1-2b-plus",
-            "8b": "ibm-granite/granite-speech-3.2-8b",
-        }
-        return model_map.get(variant, f"ibm-granite/granite-speech-4.1-{variant}")
-
-
-_PREFIX_REGISTRY["granite-speech-"] = GraniteSpeechTranscriber

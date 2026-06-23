@@ -10,7 +10,6 @@
 from asrlabs.transcribe.base import (  # noqa: F401 — re-export
     TRANSCRIBER_REGISTRY,
     BaseTranscriber,
-    _PREFIX_REGISTRY,
     get_transcriber,
     list_transcribers,
     register_transcriber,
@@ -28,7 +27,6 @@ from asrlabs.transcribe.granite_speech import GraniteSpeechTranscriber  # noqa: 
 __all__ = [
     "TRANSCRIBER_REGISTRY",
     "BaseTranscriber",
-    "_PREFIX_REGISTRY",
     "get_transcriber",
     "list_transcribers",
     "register_transcriber",
