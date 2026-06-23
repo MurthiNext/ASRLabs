@@ -22,7 +22,7 @@ from asrlabs.transcribe.base import register_transcriber
 
 @register_transcriber
 class CohereTranscriber(BaseTranscriber):
-    """Cohere Transcribe 听写后端（transformers >= 5.4.0 原生支持）"""
+    """Cohere Transcribe 听写后端（transformers < 5.0 需 trust_remote_code）"""
 
     name = "cohere-transcribe"
     display_name = "Cohere Transcribe"
@@ -31,12 +31,15 @@ class CohereTranscriber(BaseTranscriber):
 
     def load_model(self) -> None:
         """加载 Cohere Transcribe 模型（本地 transformers）"""
-        from transformers import AutoProcessor, CohereAsrForConditionalGeneration
+        from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
 
         model_path = self.model_path or "CohereLabs/cohere-transcribe-03-2026"
-        self._processor = AutoProcessor.from_pretrained(model_path)
-        self._model = CohereAsrForConditionalGeneration.from_pretrained(
+        self._processor = AutoProcessor.from_pretrained(
+            model_path, trust_remote_code=True,
+        )
+        self._model = AutoModelForSpeechSeq2Seq.from_pretrained(
             model_path,
+            trust_remote_code=True,
             device_map=self.config.get("device", "auto"),
         )
 
