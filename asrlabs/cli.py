@@ -22,7 +22,7 @@ def main():
 @click.argument("audio", type=click.Path(exists=True))
 @click.option(
     "-m", "--model", default="whisper-base",
-    help="模型名称: whisper-large-v3, faster-whisper-large-v3, qwen3-asr-1.7b ..."
+    help="本地模型: whisper-base, faster-whisper-large-v3, qwen3-asr-1.7b, granite-speech-2b ..."
 )
 @click.option(
     "-f", "--formats", default="json,srt,txt",
@@ -209,30 +209,41 @@ def init():
     """生成示例配置文件"""
     config_content = """# ASRLabs 项目配置
 # 生成方式: asrlab init
+#
+# 可用本地模型:
+#   whisper-base / whisper-large-v3         — OpenAI Whisper (stable-ts)
+#   faster-whisper-base / faster-whisper-large-v3 — Faster Whisper (CTranslate2, 支持 vulkan)
+#   qwen3-asr-0.6b / qwen3-asr-1.7b         — Qwen3 ASR
+#   granite-speech-2b / granite-speech-2b-plus — IBM Granite Speech
 
+# ── 听写模型 ──
 transcriber:
-  model: whisper-base              # 模型名含引擎+尺寸
+  model: whisper-base              # 本地模型名
   device: auto                     # cuda | cpu | vulkan | auto
-  compute_type: float16            # float16 | int8 | float32，仅 faster-whisper
-  language: auto                   # auto | zh | en | ja ...
+  compute_type: float16            # float16 | int8 | float32（仅 faster-whisper / vulkan）
+  language: auto                   # auto | zh | en | ja | ko ...
   beam_size: 5
   extras: {}                       # 透传底层库特有参数
 
+# ── 对齐器（可选） ──
 aligner:
   name: none                       # whisper_align | qwen3_align | none
   extras: {}
 
+# ── 音频预处理 ──
 audio:
   sample_rate: 16000
   vad: true
   max_segment_length: 30.0
   min_silence_dur: 0.5
 
+# ── 输出 ──
 output:
   formats: [json, srt, txt]
   dir: ./output
   keep_segments: false
 
+# ── 日志 ──
 logging:
   level: INFO
   file: null

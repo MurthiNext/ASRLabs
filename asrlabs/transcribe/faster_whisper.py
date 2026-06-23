@@ -3,7 +3,7 @@
 import numpy as np
 from asrlabs.models import TranscriptionResult, Segment, Word
 from asrlabs.transcribe.base import BaseTranscriber
-from asrlabs.transcribe import register_transcriber, _PREFIX_REGISTRY
+from asrlabs.transcribe.base import register_transcriber, _PREFIX_REGISTRY
 
 
 @register_transcriber
