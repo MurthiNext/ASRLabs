@@ -24,7 +24,7 @@ class WhisperTranscriber(BaseTranscriber):
         import stable_whisper
 
         # 提取模型尺寸（如 whisper-base → base）
-        size = self.config.get("model", "base").split("-", 1)[1]
+        size = self.config.get("model", self.name).split("-", 1)[1]
         device = self.config.get("device", "auto")
         if device == "auto":
             device = "cuda" if self._cuda_available() else "cpu"
