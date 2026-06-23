@@ -1,0 +1,12 @@
+# Python
+.venv
+*.egg-info
+__pycache__
+.pytest_cache
+
+# Dev
+docs
+
+# AI
+.claude
+.superpowers
