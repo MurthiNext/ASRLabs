@@ -31,13 +31,23 @@ class CohereTranscriber(BaseTranscriber):
 
     def load_model(self) -> None:
         """加载 Cohere Transcribe 模型（本地 transformers）"""
+        import torch
         from transformers import AutoProcessor, CohereAsrForConditionalGeneration
 
         model_path = self.model_path or "CohereLabs/cohere-transcribe-03-2026"
+
+        # CPU 用 float32，GPU 可用 bfloat16
+        device = self.config.get("device", "auto")
+        if device == "cpu" or (device == "auto" and not torch.cuda.is_available()):
+            torch_dtype = torch.float32
+        else:
+            torch_dtype = torch.bfloat16
+
         self._processor = AutoProcessor.from_pretrained(model_path)
         self._model = CohereAsrForConditionalGeneration.from_pretrained(
             model_path,
-            device_map=self.config.get("device", "auto"),
+            torch_dtype=torch_dtype,
+            device_map=device,
         )
 
     def transcribe(
