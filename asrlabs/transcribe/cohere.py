@@ -65,7 +65,7 @@ class CohereTranscriber(BaseTranscriber):
         else:
             pipe_input = audio
 
-        result = self._pipe(pipe_input, return_timestamps=False,
+        result = self._pipe(pipe_input,
                             generate_kwargs={"language": language, "max_new_tokens": 256})
 
         text = result["text"].strip() if isinstance(result, dict) else str(result).strip()
