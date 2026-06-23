@@ -5,6 +5,7 @@
     from asrlabs.transcribe import FasterWhisperTranscriber
     from asrlabs.transcribe import Qwen3ASRTranscriber
     from asrlabs.transcribe import GraniteSpeechTranscriber
+    from asrlabs.transcribe import CohereTranscriber
 """
 
 from asrlabs.transcribe.base import (  # noqa: F401 — re-export
@@ -20,9 +21,7 @@ from asrlabs.transcribe.whisper import WhisperTranscriber  # noqa: F401
 from asrlabs.transcribe.faster_whisper import FasterWhisperTranscriber  # noqa: F401
 from asrlabs.transcribe.qwen3_asr import Qwen3ASRTranscriber  # noqa: F401
 from asrlabs.transcribe.granite_speech import GraniteSpeechTranscriber  # noqa: F401
-
-# ── 云端模型 —— 暂未启用，后续支持 ──
-# from asrlabs.transcribe.cohere import CohereTranscriber  # noqa: F401
+from asrlabs.transcribe.cohere import CohereTranscriber  # noqa: F401  # 本地模式
 
 __all__ = [
     "TRANSCRIBER_REGISTRY",
@@ -34,4 +33,5 @@ __all__ = [
     "FasterWhisperTranscriber",
     "Qwen3ASRTranscriber",
     "GraniteSpeechTranscriber",
+    "CohereTranscriber",
 ]

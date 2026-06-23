@@ -22,7 +22,7 @@ def main():
 @click.argument("audio", type=click.Path(exists=True))
 @click.option(
     "-m", "--model", default="whisper",
-    help="引擎名: whisper | faster-whisper | qwen3-asr | granite-speech"
+    help="引擎名: whisper | faster-whisper | qwen3-asr | granite-speech | cohere-transcribe"
 )
 @click.option(
     "--model-path", default=None,
