@@ -180,11 +180,20 @@ class Runner:
 
         for r in results:
             for seg in r.segments:
+                # 偏移词级时间戳
+                offset_words = []
+                for w in seg.words:
+                    offset_words.append(type(w)(
+                        text=w.text,
+                        start=w.start + time_offset,
+                        end=w.end + time_offset,
+                        confidence=w.confidence,
+                    ))
                 all_segments.append(Segment(
                     text=seg.text,
                     start=seg.start + time_offset,
                     end=seg.end + time_offset,
-                    words=seg.words,  # 词级时间戳也需偏移，暂略
+                    words=offset_words,
                     confidence=seg.confidence,
                 ))
             time_offset += r.duration

@@ -1,5 +1,20 @@
 """Faster Whisper 听写后端——通过 stable-ts 的 CTranslate2 后端调用"""
 
+import os as _os
+import sys as _sys
+
+# 注册 CUDA 12 DLL 路径（pip 安装的 nvidia-cublas-cu12），
+# 解决 CUDA 13 环境下 ctranslate2 找不到 cublas64_12.dll 的问题
+_CUDA12_DLL_DIRS = []
+_nvidia_base = _os.path.join(_sys.prefix, "Lib", "site-packages", "nvidia")
+for _d in ["cublas", "cublas/bin", "cuda_runtime", "cuda_runtime/bin"]:
+    _p = _os.path.join(_nvidia_base, _d)
+    if _os.path.isdir(_p):
+        _os.add_dll_directory(_p)
+        _CUDA12_DLL_DIRS.append(_p)
+for _d in _CUDA12_DLL_DIRS:
+    _os.environ["PATH"] = _d + _os.pathsep + _os.environ.get("PATH", "")
+
 import numpy as np
 from asrlabs.models import TranscriptionResult, Segment, Word
 from asrlabs.transcribe.base import BaseTranscriber
