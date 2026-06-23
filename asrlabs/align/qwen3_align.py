@@ -18,19 +18,21 @@ class Qwen3Aligner(BaseAligner):
     display_name = "Qwen3 Forced Aligner"
 
     def load_model(self) -> None:
-        """加载 Qwen3 Forced Aligner 模型"""
+        """加载 Qwen3 Forced Aligner 模型
+
+        model_path 为空时默认使用 Qwen/Qwen3-ForcedAligner-0.6B，
+        否则可以是 HuggingFace 模型 ID 或本地缓存路径。
+        """
         from qwen_asr import Qwen3ForcedAligner
         import torch
 
-        model_name = self.config.get("extras", {}).get(
-            "forced_aligner_model", "Qwen/Qwen3-ForcedAligner-0.6B"
-        )
+        model_path = self.model_path or "Qwen/Qwen3-ForcedAligner-0.6B"
         device = self.config.get("device", "auto")
         if device == "auto":
             device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
         self._model = Qwen3ForcedAligner.from_pretrained(
-            model_name,
+            model_path,
             dtype=torch.bfloat16,
             device_map=device,
         )

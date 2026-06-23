@@ -129,12 +129,16 @@ def transcribe(audio, model, model_path, formats, lang, aligner, config_path,
 @click.option("-c", "--config", "config_path", default=None,
               type=click.Path(exists=True), help="配置文件路径")
 @click.option(
+    "--model-path", default=None,
+    help="对齐模型路径或 HF ID（空则使用引擎默认）"
+)
+@click.option(
     "--device",
     type=click.Choice(["cuda", "cpu", "vulkan", "auto"]),
     default=None,
     help="设备: cuda / cpu / vulkan / auto（默认 auto）"
 )
-def align(audio, reference, text, lang, aligner, config_path, device):
+def align(audio, reference, text, lang, aligner, config_path, model_path, device):
     """对齐——为文本添加时间戳
 
     AUDIO: 音频文件路径
@@ -171,11 +175,17 @@ def align(audio, reference, text, lang, aligner, config_path, device):
         cfg = load_config(config_path)
         aligner_config = {
             "name": aligner,
+            "model_path": model_path or "",
             "device": device or cfg.transcriber.device,
             "extras": cfg.aligner.extras,
         }
     else:
-        aligner_config = {"name": aligner, "device": device or "auto", "extras": {}}
+        aligner_config = {
+            "name": aligner,
+            "model_path": model_path or "",
+            "device": device or "auto",
+            "extras": {},
+        }
 
     al = get_aligner(aligner, aligner_config)
     if al is None:

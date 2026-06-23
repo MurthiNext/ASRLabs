@@ -18,16 +18,19 @@ class WhisperAligner(BaseAligner):
     display_name = "Stable Whisper Align"
 
     def load_model(self) -> None:
-        """加载同款 Whisper 模型用于对齐"""
+        """加载同款 Whisper 模型用于对齐
+
+        model_path 为空时使用 "base"，否则可以是 stable-ts 尺寸名
+        或本地模型路径。
+        """
         import stable_whisper
 
-        # 对齐需要与听写相同尺寸的模型，默认使用 base
-        size = self.config.get("extras", {}).get("model_size", "base")
+        model_path = self.model_path or "base"
         device = self.config.get("device", "auto")
         if device == "auto":
             device = "cuda" if self._cuda_available() else "cpu"
 
-        self._model = stable_whisper.load_model(size, device=device)
+        self._model = stable_whisper.load_model(model_path, device=device)
 
     def align(
         self,

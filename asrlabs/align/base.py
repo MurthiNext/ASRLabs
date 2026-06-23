@@ -61,9 +61,10 @@ class BaseAligner(ABC):
         """初始化对齐后端
 
         Args:
-            config: 配置字典，至少包含 extras
+            config: 配置字典，至少包含 model_path, device, extras
         """
         self.config = config
+        self.model_path = config.get("model_path", "")  # 本地模型路径，空则用默认
         self._model = None
         self._loaded = False
 
