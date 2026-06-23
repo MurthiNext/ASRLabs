@@ -231,29 +231,20 @@ class Runner:
     def _save_output(self, audio: Path, result: TranscriptionResult):
         """按配置写出所有格式
 
-        - cfg.output.dir 为目录时: 输出到 <dir>/<stem>.<fmt>
-        - cfg.output.dir 含扩展名时: 作为输出文件 stem（如 -o result → result.json）
+        - cfg.output.name 非空 → <dir>/<name>.<fmt>
+        - cfg.output.name 为空 → <dir>/<audio.stem>.<fmt>
         """
-        out = Path(self.cfg.output.dir)
-        if not out.is_absolute():
-            out = audio.parent / out
-
-        # 判断是目录还是文件 stem
-        if out.suffix and out.suffix.lstrip(".") in ("json", "srt", "txt"):
-            # 用户指定了文件路径（如 -o ./my_result → 输出 my_result.json）
-            stem = str(out.with_suffix(""))
-            out_dir = out.parent
-        else:
-            # 目录模式
-            stem = str(out / audio.stem)
-            out_dir = out
-
+        out_dir = Path(self.cfg.output.dir)
+        if not out_dir.is_absolute():
+            out_dir = audio.parent / out_dir
         out_dir.mkdir(parents=True, exist_ok=True)
+
+        stem = self.cfg.output.name or audio.stem
         for fmt in self.cfg.output.formats:
             if fmt == "srt" and not result.has_timestamps:
                 logger.warning("跳过 SRT：结果不含时间戳（模型 %s 不产出时间戳）", result.model)
                 continue
-            out_path = Path(f"{stem}.{fmt}")
+            out_path = out_dir / f"{stem}.{fmt}"
             result.save(out_path)
             logger.info(f"输出: {out_path}")
 

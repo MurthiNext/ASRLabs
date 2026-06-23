@@ -42,7 +42,8 @@ class AudioConfig:
 class OutputConfig:
     """输出配置"""
     formats: list[str] = field(default_factory=lambda: ["json"])
-    dir: str = "./output"
+    dir: str = "./output"   # 输出目录
+    name: str = ""          # 自定义文件名 stem（空则用输入文件名）
     keep_segments: bool = False
 
 
@@ -152,6 +153,7 @@ def load_config(path: str | Path) -> ProjectConfig:
     output = OutputConfig(
         formats=out_raw.get("formats", ["json"]),
         dir=out_raw.get("dir", "./output"),
+        name=out_raw.get("name", ""),
         keep_segments=out_raw.get("keep_segments", False),
     )
 

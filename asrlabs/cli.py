@@ -36,8 +36,9 @@ def main():
 @click.option("--aligner", default=None, help="对齐器名称（whisper_align / qwen3_align）")
 @click.option("-c", "--config", "config_path", default=None,
               type=click.Path(exists=True), help="配置文件路径")
-@click.option("-o", "--output-dir", default=None, help="输出路径: 目录或文件 stem（如 -o result 生成 result.json）")
-@click.option("--batch", is_flag=True, help="批量处理目录（-o 必须为目录）")
+@click.option("-d", "--dir", default=None, help="输出目录")
+@click.option("-o", "--output", default=None, help="输出文件名 stem（不含扩展名）")
+@click.option("--batch", is_flag=True, help="批量处理目录（仅允许 -d）")
 @click.option(
     "--device",
     type=click.Choice(["cuda", "cpu", "vulkan", "auto"]),
@@ -51,7 +52,7 @@ def main():
     help="计算精度: float16 / int8 / float32（默认 float16）"
 )
 def transcribe(audio, model, model_path, formats, lang, aligner, config_path,
-               output_dir, batch, device, compute_type):
+               dir, output, batch, device, compute_type):
     """听写——音频转文本
 
     AUDIO: 音频文件路径或目录（--batch 批量处理时）
@@ -64,8 +65,10 @@ def transcribe(audio, model, model_path, formats, lang, aligner, config_path,
             runner.cfg.transcriber.model = model
         if lang != "auto":
             runner.cfg.transcriber.language = lang
-        if output_dir:
-            runner.cfg.output.dir = output_dir
+        if dir:
+            runner.cfg.output.dir = dir
+        if output:
+            runner.cfg.output.name = output
         if formats:
             runner.cfg.output.formats = [f.strip() for f in formats.split(",")]
         if aligner:
@@ -91,7 +94,8 @@ def transcribe(audio, model, model_path, formats, lang, aligner, config_path,
             audio=AudioConfig(),
             output=OutputConfig(
                 formats=[f.strip() for f in formats.split(",")],
-                dir=output_dir or "./output",
+                dir=dir or "./output",
+                name=output or "",
             ),
             logging=LoggingConfig(),
         )
@@ -111,11 +115,9 @@ def transcribe(audio, model, model_path, formats, lang, aligner, config_path,
 
     audio_path = Path(audio)
     if batch or audio_path.is_dir():
-        # 批量模式：-o 必须为目录
-        if output_dir:
-            out = Path(output_dir)
-            if out.suffix:  # 有扩展名 → 是文件路径，批量模式下不允许
-                raise click.UsageError("批量模式下 -o 必须为目录，不能指定文件名")
+        # 批量模式：只允许 -d，不允许 -o
+        if output:
+            raise click.UsageError("批量模式下仅允许 -d 指定目录，不支持 -o 指定文件名")
         results = runner.run_batch(audio_path)
         click.echo(f"批量处理完成，共 {len(results)} 个文件")
     else:
@@ -133,7 +135,8 @@ def transcribe(audio, model, model_path, formats, lang, aligner, config_path,
               help="输出格式，逗号分隔: json,srt,txt")
 @click.option("-l", "--lang", default="auto", help="语言代码（纯文本时必需）")
 @click.option("--aligner", default="qwen3_align", help="对齐器: whisper_align / qwen3_align")
-@click.option("-o", "--output-dir", default=None, help="输出路径（目录或文件 stem）")
+@click.option("-d", "--dir", default=None, help="输出目录")
+@click.option("-o", "--output", default=None, help="输出文件名 stem（不含扩展名）")
 @click.option("-c", "--config", "config_path", default=None,
               type=click.Path(exists=True), help="配置文件路径")
 @click.option(
@@ -146,7 +149,7 @@ def transcribe(audio, model, model_path, formats, lang, aligner, config_path,
     default=None,
     help="设备: cuda / cpu / vulkan / auto（默认 auto）"
 )
-def align(audio, reference, text, formats, lang, aligner, output_dir, config_path, model_path, device):
+def align(audio, reference, text, formats, lang, aligner, dir, output, config_path, model_path, device):
     """对齐——为文本添加时间戳
 
     AUDIO: 音频文件路径
@@ -217,14 +220,12 @@ def align(audio, reference, text, formats, lang, aligner, output_dir, config_pat
         if fmt == "srt" and not aligned.has_timestamps:
             click.echo("跳过 SRT：对齐结果不含时间戳")
             continue
-        if output_dir:
-            out = Path(output_dir)
-            if out.suffix and out.suffix.lstrip(".") in ("json", "srt", "txt"):
-                stem = str(out.with_suffix(""))
-            else:
-                out.mkdir(parents=True, exist_ok=True)
-                stem = str(out / Path(audio).stem)
-            out_path = Path(f"{stem}.{fmt}")
+        # 确定输出路径
+        if dir or output:
+            out_dir = Path(dir) if dir else Path(audio).parent
+            out_dir.mkdir(parents=True, exist_ok=True)
+            stem = output or Path(audio).stem
+            out_path = out_dir / f"{stem}.{fmt}"
         else:
             out_path = Path(audio).with_suffix(f".aligned.{fmt}")
         aligned.save(out_path)
@@ -288,8 +289,9 @@ audio:
 
 # ── 输出 ──
 output:
-  formats: [json]                   # transcribe 默认仅 json；align 使用 -f 指定
-  dir: ./output
+  formats: [json]                   # transcribe 默认仅 json；-f json,srt,txt 追加
+  dir: ./output                     # 输出目录（-d 覆盖）
+  name: ""                          # 输出文件名 stem（-o 覆盖，空则用输入文件名）
   keep_segments: false
 
 # ── 日志 ──
