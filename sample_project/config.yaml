@@ -1,0 +1,41 @@
+# ASRLabs 示例项目配置
+# 使用方式: asrlab transcribe audio/sample.wav -c config.yaml
+
+# ── 听写模型 ──
+transcriber:
+  model: whisper-base              # whisper-large-v3 / faster-whisper-large-v3 / qwen3-asr-1.7b / cohere-transcribe / granite-speech-2b
+  device: auto                     # cuda / cpu / vulkan / auto
+  compute_type: float16            # float16 / int8 / float32（仅 faster-whisper）
+  language: auto                   # auto / zh / en / ja / ko ...
+  beam_size: 5
+  extras:                          # 透传底层库特有参数
+    temperature: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    vad_filter: true
+
+# ── 对齐器（可选） ──
+aligner:
+  name: none                       # whisper_align / qwen3_align / none
+  extras: {}
+
+# ── 音频预处理 ──
+audio:
+  sample_rate: 16000               # 目标采样率
+  vad: true                        # 启用 VAD 分段
+  max_segment_length: 30.0         # 单段最长秒数
+  min_silence_dur: 0.5             # 最小静音时长（秒）
+
+# ── 输出 ──
+output:
+  formats: [json, srt, txt]        # 输出格式列表
+  dir: ./output                    # 输出目录
+  keep_segments: false             # 是否保留分段中间文件
+
+# ── 日志 ──
+logging:
+  level: INFO                      # DEBUG / INFO / WARNING
+  file: null                       # null = 输出到 stderr
+
+# ── Cohere 专用（其他模型忽略） ──
+# cohere:
+#   api_key: ${COHERE_API_KEY}     # 支持环境变量引用
+#   mode: cloud                    # cloud / local
