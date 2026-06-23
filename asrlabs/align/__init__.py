@@ -8,6 +8,7 @@ from asrlabs.align.base import (
     register_aligner,
 )
 from asrlabs.align.whisper_align import WhisperAligner  # noqa: F401 — 触发 @register_aligner 装饰器
+from asrlabs.align.qwen3_align import Qwen3Aligner  # noqa: F401 — 触发 @register_aligner 装饰器
 
 __all__ = [
     "ALIGNER_REGISTRY",
@@ -16,4 +17,5 @@ __all__ = [
     "list_aligners",
     "register_aligner",
     "WhisperAligner",
+    "Qwen3Aligner",
 ]
