@@ -16,4 +16,5 @@ torch>=2.12         # 从 PyTorch 索引安装以获得 CUDA/Vulkan 支持
 torchaudio>=2.11     # 从 PyTorch 索引安装
 numpy>=1.24
 soundfile>=0.12
+sentencepiece>=0.2
 tqdm>=4.0
