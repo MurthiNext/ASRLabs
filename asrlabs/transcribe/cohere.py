@@ -1,13 +1,13 @@
 """Cohere Transcribe 听写后端
 
-需要 transformers >= 5.4.0（原生支持 CohereAsrForConditionalGeneration）。
+需要 transformers >= 4.52 + trust_remote_code。
 云端 API 模式待后续支持。
 
 使用方式:
     from asrlabs.transcribe import CohereTranscriber
     t = CohereTranscriber({
         "model": "cohere-transcribe",
-        "model_path": "CohereLabs/cohere-transcribe-03-2026",  # 或本地路径
+        "model_path": "CohereLabs/cohere-transcribe-03-2026",
         "device": "cuda",
     })
     t.load_model()
@@ -22,7 +22,7 @@ from asrlabs.transcribe.base import register_transcriber
 
 @register_transcriber
 class CohereTranscriber(BaseTranscriber):
-    """Cohere Transcribe 听写后端（transformers < 5.0 需 trust_remote_code）"""
+    """Cohere Transcribe 听写后端（transformers pipeline）"""
 
     name = "cohere-transcribe"
     display_name = "Cohere Transcribe"
@@ -30,18 +30,23 @@ class CohereTranscriber(BaseTranscriber):
     recommended_aligner = "qwen3_align"
 
     def load_model(self) -> None:
-        """加载 Cohere Transcribe 模型（本地 transformers）"""
-        from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
+        """通过 transformers pipeline 加载（避免 generate 兼容问题）"""
+        from transformers import pipeline
 
         model_path = self.model_path or "CohereLabs/cohere-transcribe-03-2026"
-        self._processor = AutoProcessor.from_pretrained(
-            model_path, trust_remote_code=True,
-        )
-        self._model = AutoModelForSpeechSeq2Seq.from_pretrained(
-            model_path,
+
+        device = self.config.get("device", "auto")
+        if device == "auto":
+            import torch
+            device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+        self._pipe = pipeline(
+            "automatic-speech-recognition",
+            model=model_path,
             trust_remote_code=True,
-            device_map=self.config.get("device", "auto"),
+            device=device,
         )
+        self._model = True  # pipeline 已加载
 
     def transcribe(
         self, audio: str | np.ndarray, **kwargs
@@ -53,43 +58,20 @@ class CohereTranscriber(BaseTranscriber):
         if language == "auto":
             language = "en"
 
-        return self._transcribe_local(audio, language)
-
-    # ── 云端模式 —— 后续支持 ──
-    # def _transcribe_cloud(self, audio, language):
-    #     """通过 Cohere 云端 API 听写（TODO）"""
-    #     ...
-
-    def _transcribe_local(
-        self, audio: str | np.ndarray, language: str
-    ) -> TranscriptionResult:
-        """通过本地 transformers 模型听写"""
-        from transformers.audio_utils import load_audio as hf_load_audio
-        import torch
-
-        if isinstance(audio, str):
-            audio_array = hf_load_audio(audio, sampling_rate=16000)
+        # pipeline 音频输入
+        if isinstance(audio, np.ndarray):
+            # VAD 分出的 numpy chunk → pipeline 接受 dict
+            pipe_input = {"array": audio, "sampling_rate": 16000}
         else:
-            audio_array = audio
+            pipe_input = audio
 
-        inputs = self._processor(
-            audio=audio_array, sampling_rate=16000, return_tensors="pt",
-            language=language,
-        ).to(device=self._model.device, dtype=self._model.dtype)
+        result = self._pipe(pipe_input, return_timestamps=False,
+                            generate_kwargs={"language": language, "max_new_tokens": 256})
 
-        with torch.no_grad():
-            outputs = self._model.generate(
-                **inputs,
-                max_new_tokens=256,
-                do_sample=False,
-                num_beams=1,
-            )
-
-        text = self._processor.decode(outputs[0], skip_special_tokens=True)
-
+        text = result["text"].strip() if isinstance(result, dict) else str(result).strip()
         return TranscriptionResult(
-            text=text.strip(),
-            segments=[Segment(text.strip(), 0.0, 0.0)],
+            text=text,
+            segments=[Segment(text, 0.0, 0.0)],
             language=language,
             model="cohere-transcribe",
             has_timestamps=False,
