@@ -1,6 +1,8 @@
 """Qwen3 Forced Aligner 对齐器——通过 qwen-asr 的 Qwen3ForcedAligner 实现"""
 
 import logging
+import tempfile
+from pathlib import Path
 import numpy as np
 from asrlabs.models import TranscriptionResult, Segment, Word
 from asrlabs.align.base import BaseAligner
@@ -10,27 +12,23 @@ logger = logging.getLogger(__name__)
 
 # Qwen3ForcedAligner 限制：单段最长 5 分钟
 _MAX_AUDIO_SECONDS = 280  # ~4.7 分钟，留余量
+_TARGET_SR = 16000        # Qwen3 要求 16kHz
 
 
 @register_aligner
 class Qwen3Aligner(BaseAligner):
     """Qwen3 Forced Aligner 对齐器
 
-    独立对齐器，适用于任何听写模型产出的文本。
-    支持 11 种语言，单段最长 5 分钟，需要 GPU。
-
     对齐策略:
-      1. 合并全部 segment 文本
-      2. 按字符数比例估算时间位置，切分音频为 < 5 分钟的块
-      3. 每块合并文本 + 提取对应音频片段 → 一次 align() 调用
-      4. 对齐结果直接作为新的 segment（带有词级时间戳）
+      1. 合并全部 segment 文本，按字符数比例切分为 < 5 分钟的块
+      2. 每块提取音频 → 重采样到 16kHz → 写临时 WAV → align()
+      3. 对齐结果直接作为新 segment（带词级时间戳）
     """
 
     name = "qwen3_align"
     display_name = "Qwen3 Forced Aligner"
 
     def load_model(self) -> None:
-        """加载 Qwen3 Forced Aligner 模型"""
         from qwen_asr import Qwen3ForcedAligner
         import torch
 
@@ -40,9 +38,7 @@ class Qwen3Aligner(BaseAligner):
             device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
         self._model = Qwen3ForcedAligner.from_pretrained(
-            model_path,
-            dtype=torch.bfloat16,
-            device_map=device,
+            model_path, dtype=torch.bfloat16, device_map=device,
         )
 
     def align(
@@ -51,7 +47,6 @@ class Qwen3Aligner(BaseAligner):
         result: TranscriptionResult,
         language: str | None = None,
     ) -> TranscriptionResult:
-        """对齐音频和文本"""
         self._ensure_loaded()
 
         lang = language or result.language
@@ -59,22 +54,18 @@ class Qwen3Aligner(BaseAligner):
             lang = "Chinese"
 
         total_duration = self._get_audio_duration(audio)
-        sr = self._get_audio_sr(audio)
 
-        # 获取有效 segment 的完整文本
         valid_segs = [s for s in result.segments if s.text.strip()]
         if not valid_segs:
             return result
 
         total_chars = sum(len(s.text) for s in valid_segs)
 
-        # 短文本 -> 直接对齐
+        # 短文本直接对齐
         if total_chars < 100:
             return self._align_single(audio, result, lang)
 
-        # 按字符数比例切分为 < _MAX_AUDIO_SECONDS 的块
         chunk_plans = self._plan_chunks(valid_segs, total_chars, total_duration)
-
         logger.info(
             "对齐: %d segments, %d 字符, %.1fs → %d 个块",
             len(valid_segs), total_chars, total_duration, len(chunk_plans),
@@ -84,31 +75,34 @@ class Qwen3Aligner(BaseAligner):
         for i, plan in enumerate(chunk_plans):
             try:
                 chunk_text = plan["text"]
-                chunk_start = plan["start_sec"]
-                chunk_end = plan["end_sec"]
-
                 logger.info("  块 %d/%d: %.1f-%.1fs, %d 字符",
-                            i + 1, len(chunk_plans), chunk_start, chunk_end, len(chunk_text))
+                            i + 1, len(chunk_plans),
+                            plan["start_sec"], plan["end_sec"], len(chunk_text))
 
-                chunk_audio = self._extract_audio_chunk(
-                    audio, chunk_start, chunk_end, total_duration, sr,
+                # 提取音频块 → 重采样到 16kHz → 写临时 WAV
+                chunk_audio = self._read_audio_chunk(
+                    audio, plan["start_sec"], plan["end_sec"], total_duration,
                 )
+                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+                    tmp_path = f.name
+                self._write_wav(tmp_path, chunk_audio, _TARGET_SR)
 
-                align_results = self._model.align(
-                    audio=(chunk_audio, sr),
-                    text=chunk_text,
-                    language=lang,
-                )
-
-                # 对齐结果直接作为新 segment（带词级时间戳）
-                seg = self._tokens_to_segment(align_results, chunk_start)
-                if seg:
-                    aligned_segments.append(seg)
-                else:
-                    # 对齐失败 -> 保留原始文本（无时间戳）
-                    aligned_segments.append(
-                        Segment(text=chunk_text, start=chunk_start, end=chunk_end)
+                try:
+                    align_results = self._model.align(
+                        audio=tmp_path,
+                        text=chunk_text,
+                        language=lang,
                     )
+                    seg = self._tokens_to_segment(align_results, plan["start_sec"])
+                    if seg:
+                        aligned_segments.append(seg)
+                    else:
+                        aligned_segments.append(
+                            Segment(text=chunk_text,
+                                    start=plan["start_sec"], end=plan["end_sec"])
+                        )
+                finally:
+                    Path(tmp_path).unlink(missing_ok=True)
 
             except KeyboardInterrupt:
                 logger.warning("用户中断")
@@ -116,7 +110,8 @@ class Qwen3Aligner(BaseAligner):
             except Exception as e:
                 logger.warning("块 %d 对齐失败 (%s)", i + 1, e)
                 aligned_segments.append(
-                    Segment(text=plan["text"], start=plan["start_sec"], end=plan["end_sec"])
+                    Segment(text=plan["text"],
+                            start=plan["start_sec"], end=plan["end_sec"])
                 )
 
         full_text = " ".join(s.text for s in aligned_segments if s.text)
@@ -127,16 +122,14 @@ class Qwen3Aligner(BaseAligner):
             duration=total_duration,
             model=result.model,
             has_timestamps=any(
-                s.words and len(s.words) > 0 and s.start > 0 for s in aligned_segments
+                s.words and len(s.words) > 0 and s.words[0].end > 0
+                for s in aligned_segments
             ),
         )
 
     # ── 辅助方法 ──
 
-    def _align_single(
-        self, audio, result: TranscriptionResult, lang: str
-    ) -> TranscriptionResult:
-        """短文本直接对齐"""
+    def _align_single(self, audio, result, lang):
         text = result.text.strip()
         if not text:
             return result
@@ -144,57 +137,41 @@ class Qwen3Aligner(BaseAligner):
             align_results = self._model.align(audio=audio, text=text, language=lang)
         except Exception:
             return result
-
         seg = self._tokens_to_segment(align_results, 0.0)
         if seg:
             result.segments = [seg]
             result.has_timestamps = True
         return result
 
-    def _tokens_to_segment(self, align_results, time_offset: float) -> Segment | None:
-        """将 Qwen3ForcedAligner 返回的 token 列表转为 Segment"""
+    def _tokens_to_segment(self, align_results, time_offset):
         if not align_results or not align_results[0]:
             return None
         tokens = list(align_results[0])
         if not tokens:
             return None
         words = [
-            Word(text=t.text, start=t.start_time + time_offset, end=t.end_time + time_offset)
+            Word(text=t.text,
+                 start=round(float(t.start_time) + time_offset, 3),
+                 end=round(float(t.end_time) + time_offset, 3))
             for t in tokens
         ]
-        text = " ".join(w.text for w in words)
+        text = "".join(w.text for w in words)  # CJK 不用空格拼接
         return Segment(text=text, start=words[0].start, end=words[-1].end, words=words)
 
-    def _plan_chunks(
-        self,
-        segments: list[Segment],
-        total_chars: int,
-        total_duration: float,
-    ) -> list[dict]:
-        """按字符数比例规划音频块
-
-        Returns:
-            [{text, start_sec, end_sec}, ...]
-        """
+    def _plan_chunks(self, segments, total_chars, total_duration):
         chars_per_sec = total_chars / max(total_duration, 1)
         plans = []
-        current_segs = []
-        current_chars = 0
+        current_segs, current_chars = [], 0
 
         for seg in segments:
             seg_chars = len(seg.text)
-            seg_est_dur = seg_chars / max(chars_per_sec, 1)
-
-            if current_chars > 0 and (current_chars + seg_chars) / chars_per_sec > _MAX_AUDIO_SECONDS:
-                # 当前块已满，结算
+            if current_chars > 0 and (current_chars + seg_chars) / max(chars_per_sec, 1) > _MAX_AUDIO_SECONDS:
                 plans.append({
                     "text": " ".join(s.text.strip() for s in current_segs),
-                    "start_sec": 0 if not plans else plans[-1]["end_sec"],
-                    "end_sec": 0 if not plans else plans[-1]["end_sec"] + current_chars / chars_per_sec,
+                    "start_sec": 0.0 if not plans else plans[-1]["end_sec"],
+                    "end_sec": 0.0 if not plans else plans[-1]["end_sec"] + current_chars / chars_per_sec,
                 })
-                current_segs = []
-                current_chars = 0
-
+                current_segs, current_chars = [], 0
             current_segs.append(seg)
             current_chars += seg_chars
 
@@ -205,42 +182,24 @@ class Qwen3Aligner(BaseAligner):
                 "start_sec": prev_end,
                 "end_sec": total_duration,
             })
-
-        # 修正第一块的 start_sec
         if plans:
             plans[0]["start_sec"] = 0.0
-
         return plans
 
-    def _get_audio_duration(self, audio: str | np.ndarray) -> float:
-        if isinstance(audio, str):
-            import soundfile as sf
-            return sf.info(audio).duration
-        return len(audio) / 16000
+    def _read_audio_chunk(self, audio, start_sec, end_sec, total_duration):
+        """读取音频片段并重采样到 _TARGET_SR"""
+        import soundfile as sf
+        import torchaudio
 
-    def _get_audio_sr(self, audio: str | np.ndarray) -> int:
-        if isinstance(audio, str):
-            import soundfile as sf
-            return sf.info(audio).samplerate
-        return 16000
-
-    def _extract_audio_chunk(
-        self,
-        audio: str | np.ndarray,
-        start_sec: float,
-        end_sec: float,
-        total_duration: float,
-        sr: int,
-    ) -> np.ndarray:
-        """提取音频片段，加少量 padding"""
         pad = 0.3
         start_sec = max(0, start_sec - pad)
         end_sec = min(total_duration, end_sec + pad)
 
         if isinstance(audio, np.ndarray):
-            return audio[int(start_sec * sr):int(end_sec * sr)].astype(np.float32)
+            data = audio[int(start_sec * _TARGET_SR):int(end_sec * _TARGET_SR)]
+            return data.astype(np.float32)
 
-        import soundfile as sf
+        sr = sf.info(audio).samplerate
         data, _ = sf.read(
             audio,
             start=int(start_sec * sr),
@@ -249,4 +208,23 @@ class Qwen3Aligner(BaseAligner):
         )
         if data.ndim > 1:
             data = data.mean(axis=1)
+
+        # 重采样到 16kHz
+        if sr != _TARGET_SR:
+            import torch
+            t = torch.from_numpy(data).unsqueeze(0)
+            resampler = torchaudio.transforms.Resample(sr, _TARGET_SR)
+            data = resampler(t).squeeze(0).numpy()
+
         return data.astype(np.float32)
+
+    def _write_wav(self, path, audio, sr):
+        """写 WAV 文件（Qwen3 最稳定的输入方式）"""
+        import soundfile as sf
+        sf.write(path, audio, sr, subtype="PCM_16")
+
+    def _get_audio_duration(self, audio):
+        if isinstance(audio, str):
+            import soundfile as sf
+            return sf.info(audio).duration
+        return len(audio) / _TARGET_SR
