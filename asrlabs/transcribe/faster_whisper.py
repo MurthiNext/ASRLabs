@@ -18,6 +18,7 @@ class FasterWhisperTranscriber(BaseTranscriber):
     display_name = "Faster Whisper (CTranslate2 via stable-ts)"
     supports_timestamps = True
     recommended_aligner = "whisper_align"
+    supported_devices = ["cpu", "cuda", "vulkan"]  # CTranslate2 支持 vulkan
 
     def load_model(self) -> None:
         """加载 Faster Whisper 模型（通过 stable-ts load_faster_whisper）

@@ -25,6 +25,7 @@ class BaseTranscriber(ABC):
     display_name: str = ""
     supports_timestamps: bool = False
     recommended_aligner: str | None = None
+    supported_devices: list[str] = ["cpu", "cuda"]  # 子类可覆盖添加 vulkan 等
 
     def __init__(self, config: dict):
         """初始化听写后端
@@ -32,10 +33,23 @@ class BaseTranscriber(ABC):
         Args:
             config: 配置字典，至少包含 model_path, device, compute_type, language, beam_size, extras
         """
+        import logging
+
         self.config = config
         self.model_path = config.get("model_path", "")  # 本地模型路径，空则用默认
         self._model = None
         self._loaded = False
+
+        # Vulkan 回退：仅 CTranslate2 (faster-whisper) 支持，其他模型自动切到 cpu
+        raw_device = config.get("device", "auto")
+        if raw_device == "vulkan" and "vulkan" not in self.supported_devices:
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                "%s 不支持 vulkan（仅 faster-whisper 的 CTranslate2 后端支持），"
+                "已自动回退到 cpu。支持: %s",
+                self.name, ", ".join(self.supported_devices),
+            )
+            config["device"] = "cpu"
 
     @abstractmethod
     def load_model(self) -> None:
