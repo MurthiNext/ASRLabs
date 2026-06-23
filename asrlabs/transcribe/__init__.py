@@ -59,3 +59,4 @@ _PREFIX_REGISTRY: dict[str, type[BaseTranscriber]] = {}
 from asrlabs.transcribe import whisper  # noqa: F401 — 确保 @register_transcriber 被执行
 from asrlabs.transcribe import faster_whisper  # noqa: F401
 from asrlabs.transcribe import qwen3_asr  # noqa: F401
+from asrlabs.transcribe import cohere  # noqa: F401
