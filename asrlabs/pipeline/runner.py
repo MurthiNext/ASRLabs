@@ -93,12 +93,19 @@ class Runner:
         segments = preprocess_audio(audio, self.cfg.audio)
         logger.info(f"音频分为 {len(segments)} 段")
 
-        # 2. 听写
+        # 2. 听写（逐段，带上下文传递）
         transcriber = self._get_transcriber()
         all_results = []
+        prev_text = ""
         for i, segment in enumerate(segments):
             logger.info(f"听写段 {i + 1}/{len(segments)}...")
-            result = transcriber.transcribe(segment)
+            kwargs = {}
+            if prev_text and transcriber.supports_timestamps:
+                # Whisper/Faster-Whisper 支持 initial_prompt 提供上下文
+                kwargs["initial_prompt"] = prev_text[-200:]  # 取最后 200 字符
+            result = transcriber.transcribe(segment, **kwargs)
+            if result.text.strip():
+                prev_text = result.text
             all_results.append(result)
 
         # 合并多段结果
@@ -112,7 +119,10 @@ class Runner:
                 str(audio), combined, language=self.cfg.transcriber.language
             )
 
-        # 4. 输出
+        # 4. 标点归一化
+        combined = self._normalize_punctuation(combined)
+
+        # 5. 输出
         self._save_output(audio, combined)
 
         logger.info(f"完成: {audio.name}")
@@ -156,6 +166,17 @@ class Runner:
                 self.cfg.aligner.name, self._aligner_config
             )
         return self._aligner
+
+    def _normalize_punctuation(self, result: TranscriptionResult) -> TranscriptionResult:
+        """标点归一化"""
+        from asrlabs.utils.postprocess import normalize_punctuation
+        lang = result.language or self.cfg.transcriber.language or "auto"
+        if lang == "auto":
+            return result
+        result.text = normalize_punctuation(result.text, lang)
+        for seg in result.segments:
+            seg.text = normalize_punctuation(seg.text, lang)
+        return result
 
     def _should_align(self, result: TranscriptionResult) -> bool:
         """判断是否需要对齐"""

@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 # VAD 内部参数（不暴露给用户配置）
 _SPEECH_THRESHOLD = 0.5          # 语音检测阈值
 _MIN_SPEECH_DURATION_MS = 500    # 最短语音段（更短视为噪音，丢弃）
-_MIN_SILENCE_DURATION_MS = 300   # VAD 内部静音判定（较激进，后续合并会补偿）
-_MERGE_GAP = 1.5                 # 合并间距（秒）：相邻语音区隔 < 此值则合并
+_MIN_SILENCE_DURATION_MS = 500   # VAD 内部静音判定（放宽以减少碎片）
+_MERGE_GAP = 2.0                 # 合并间距（秒）：相邻语音区隔 < 此值则合并
 _CHUNK_OVERLAP = 0.5             # 切块重叠（秒）：块间保留上下文连续
 
 

@@ -18,7 +18,7 @@ class TranscriberConfig:
     device: str = "auto"
     compute_type: str = "float16"
     language: str = "auto"
-    beam_size: int = 5
+    beam_size: int = 3
     extras: dict = field(default_factory=dict)
 
 

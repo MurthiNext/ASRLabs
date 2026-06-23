@@ -197,6 +197,14 @@ def align(audio, reference, text, formats, lang, aligner, config_path, model_pat
     click.echo(f"使用对齐器: {aligner}")
     aligned = al.align(audio, result, language=lang if lang != "auto" else None)
 
+    # 标点归一化
+    from asrlabs.utils.postprocess import normalize_punctuation
+    lang_tag = lang if lang != "auto" else (aligned.language if aligned.language != "auto" else None)
+    if lang_tag:
+        aligned.text = normalize_punctuation(aligned.text, lang_tag)
+        for seg in aligned.segments:
+            seg.text = normalize_punctuation(seg.text, lang_tag)
+
     # 按 -f 格式列表输出
     fmt_list = [f.strip() for f in formats.split(",")]
     for fmt in fmt_list:
