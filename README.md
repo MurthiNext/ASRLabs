@@ -1,14 +1,8 @@
 # ASRLabs
 
-<div align="center">
-
 **ASR 工具箱 —— 整合多款开源 ASR 模型，开箱即用**
 
-[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.12-ee4c2c.svg)](https://pytorch.org/)
-
-</div>
+[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)[![PyTorch](https://img.shields.io/badge/PyTorch-2.12-ee4c2c.svg)](https://pytorch.org/)
 
 ## 目录
 
