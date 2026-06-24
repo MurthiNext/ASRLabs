@@ -6,7 +6,7 @@ __pycache__/
 .pytest_cache
 
 # Dev
-dev_docs
+docs
 local_test
 
 # AI
