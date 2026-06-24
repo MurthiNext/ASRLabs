@@ -22,7 +22,7 @@ def main():
 @click.argument("audio", type=click.Path(exists=True))
 @click.option(
     "-m", "--model", default="whisper",
-    help="引擎名: whisper | faster-whisper | qwen3-asr | granite-speech | cohere-transcribe"
+    help="引擎名: whisper | faster-whisper | qwen3-asr | granite-speech | cohere-transcribe | kotoba-whisper"
 )
 @click.option(
     "--model-path", default=None,
@@ -264,10 +264,11 @@ def init():
 #   faster-whisper   — Faster Whisper (CTranslate2, 支持 vulkan)
 #   qwen3-asr        — Qwen3 ASR, --model-path 指定 HF ID 或本地路径
 #   granite-speech   — IBM Granite Speech, --model-path 指定 HF ID 或本地路径
+#   kotoba-whisper   — Kotoba Whisper v2.2 日语听写（transformers pipeline + trust_remote_code）
 
 # ── 听写模型 ──
 transcriber:
-  model: whisper                   # 引擎名: whisper | faster-whisper | qwen3-asr | granite-speech
+  model: whisper                   # 引擎名: whisper | faster-whisper | qwen3-asr | granite-speech | kotoba-whisper
   model_path: ""                   # 本地模型路径（空则使用引擎默认）
   device: auto                     # cuda | cpu | vulkan | auto
   compute_type: float16            # float16 | int8 | float32（仅 faster-whisper / vulkan）

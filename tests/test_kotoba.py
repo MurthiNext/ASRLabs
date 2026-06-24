@@ -1,5 +1,7 @@
 """Kotoba Whisper 后端测试——使用 mock pipeline，不下载真实模型"""
 
+import re
+
 import numpy as np
 import pytest
 from asrlabs.models import TranscriptionResult
@@ -128,3 +130,26 @@ def test_listed_in_transcribers():
     from asrlabs.transcribe import list_transcribers
     names = [t["name"] for t in list_transcribers()]
     assert "kotoba-whisper" in names
+
+
+def test_cli_init_mentions_kotoba(tmp_path, monkeypatch):
+    """asrlab init 生成的配置模板应提及 kotoba-whisper"""
+    import asrlabs.cli as cli_mod
+    monkeypatch.chdir(tmp_path)
+
+    from click.testing import CliRunner
+    runner = CliRunner()
+    result = runner.invoke(cli_mod.main, ["init"])
+    assert result.exit_code == 0
+    content = (tmp_path / "config.yaml").read_text(encoding="utf-8")
+    assert "kotoba-whisper" in content
+
+
+def test_cli_transcribe_help_mentions_kotoba():
+    """asrlab transcribe --help 应提及 kotoba-whisper"""
+    import asrlabs.cli as cli_mod
+    from click.testing import CliRunner
+    runner = CliRunner()
+    result = runner.invoke(cli_mod.main, ["transcribe", "--help"])
+    # Click 文本自动换行可能导致 kotoba-\nwhisper 跨行且用空格对齐；移除所有空白后验证
+    assert "kotoba-whisper" in re.sub(r"\s+", "", result.output)
