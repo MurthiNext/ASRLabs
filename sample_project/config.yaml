@@ -39,8 +39,8 @@ audio:
 # ── 输出 ──
 output:
   formats: [json]                   # transcribe 默认仅 json；-f json,srt,txt 追加
-  dir: ./output                     # 输出目录（-d 覆盖）
-  name: ""                          # 输出文件名 stem（-o 覆盖，空则用输入文件名）
+  dir: ""                           # 输出目录（空=同音频目录，-d 覆盖）
+  name: ""                          # 输出文件名 stem（-o 覆盖，空=用输入文件名）
   keep_segments: false             # 是否保留分段中间文件
 
 # ── 日志 ──

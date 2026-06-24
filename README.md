@@ -1,8 +1,14 @@
 # ASRLabs
 
+<div align="center">
+
 **ASR 工具箱 —— 整合多款开源 ASR 模型，开箱即用**
 
-[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)[![PyTorch](https://img.shields.io/badge/PyTorch-2.12-ee4c2c.svg)](https://pytorch.org/)
+[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.12-ee4c2c.svg)](https://pytorch.org/)
+
+</div>
 
 ## 目录
 
@@ -16,6 +22,8 @@
   - [transcribe —— 听写](#transcribe-命令行参考)
   - [align —— 对齐](#align-命令行参考)
   - [list / init](#其他命令)
+- [输出控制](#输出控制)
+- [优化特性](#优化特性)
 - [项目结构](#项目结构)
 - [扩展开发](#扩展开发)
 - [依赖环境](#依赖环境)
@@ -34,19 +42,17 @@ ASRLabs 是一个 Python ASR 工具箱，参照 [GalTransl](https://github.com/G
 
 ### 听写引擎
 
-| 引擎 | `-m` 参数 | 后端 | 时间戳 | 推荐对齐器 |
-|---|---|---|---|---|
-| OpenAI Whisper | `whisper` | stable-ts | ✅ 内置 | `whisper_align` |
-| Faster Whisper | `faster-whisper` | stable-ts (CTranslate2) | ✅ 内置 | `whisper_align` |
-| Qwen3 ASR | `qwen3-asr` | qwen-asr | ❌ | `qwen3_align` |
-| IBM Granite Speech | `granite-speech` | transformers | ❌ | `qwen3_align` |
-| Cohere Transcribe | `cohere-transcribe` | transformers | ❌ | `qwen3_align` |
+| 引擎 | `-m` 参数 | 后端 | 时间戳 | Vulkan | 推荐对齐器 |
+|---|---|---|---|---|---|
+| OpenAI Whisper | `whisper` | stable-ts | ✅ 内置 | ❌ | `whisper_align` |
+| Faster Whisper | `faster-whisper` | stable-ts (CTranslate2) | ✅ 内置 | ✅ | `whisper_align` |
+| Qwen3 ASR | `qwen3-asr` | qwen-asr | ❌ | ❌ | `qwen3_align` |
+| IBM Granite Speech | `granite-speech` | transformers | ❌ | ❌ | `qwen3_align` |
+| Cohere Transcribe | `cohere-transcribe` | transformers | ❌ | ❌ | `qwen3_align` |
 
 > **Whisper / Faster Whisper** 统一使用 [stable-ts](https://github.com/jianfch/stable-ts) 作为后端，获得更精准的静音抑制、VAD 预处理和词级时间戳。
 >
-> **Faster Whisper** 支持 `--device vulkan`（CTranslate2 后端）。
->
-> **Cohere Transcribe** 当前仅支持本地 transformers 模式，云端 API 待后续支持。
+> **Faster Whisper** 独家支持 `--device vulkan`（CTranslate2 后端加速）。
 
 ### 对齐引擎
 
@@ -54,6 +60,8 @@ ASRLabs 是一个 Python ASR 工具箱，参照 [GalTransl](https://github.com/G
 |---|---|---|---|---|
 | Whisper Align | `whisper_align` | stable-ts align() + refine() | 仅 whisper / faster-whisper | 需同款模型权重 |
 | Qwen3 Forced Aligner | `qwen3_align` | qwen-asr | 任意模型 | GPU, 单段 ≤ 5 分钟 |
+
+> 听写产出的 JSON 直接作为参考文件传给对齐器，无需额外格式转换。
 
 ## 快速开始
 
@@ -65,24 +73,14 @@ cd ASRLabs
 python -m venv .venv
 .venv\Scripts\activate  # Windows
 
-# 安装依赖（CUDA 13 环境）
+# CUDA 13 环境
 pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu130
-
-# 安装 ASRLabs
 pip install -e .
+
+# CPU / CUDA 12.8 只需换索引:
+#   --extra-index-url https://download.pytorch.org/whl/cpu
+#   --extra-index-url https://download.pytorch.org/whl/cu128
 ```
-
-<details>
-<summary>其他 PyTorch 索引</summary>
-
-```bash
-# CPU 环境
-pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
-
-# CUDA 12.8 环境
-pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu128
-```
-</details>
 
 ### 基本使用
 
@@ -95,40 +93,26 @@ asrlab list aligners
 asrlab init
 
 # ── 听写 ──
-
-# Faster Whisper — 本地 CTranslate2 模型（推荐，速度快）
-asrlab transcribe audio.wav -m faster-whisper --model-path large-v3 --device cuda --lang ja
-
-# OpenAI Whisper — 指定模型尺寸
-asrlab transcribe audio.wav -m whisper --model-path large-v3 --device cuda
-
-# Qwen3 ASR — HuggingFace 模型
+asrlab transcribe audio.wav -m whisper --model-path large-v3 -d ./output
+asrlab transcribe audio.wav -m faster-whisper -o my_result -d ./output --device cuda
 asrlab transcribe audio.wav -m qwen3-asr --model-path Qwen/Qwen3-ASR-1.7B --device cuda
-
-# Granite Speech — 本地路径
-asrlab transcribe audio.wav -m granite-speech --model-path "H:\Models\ibm-granite\granite-speech-4.1-2b" --device cuda
-
-# Cohere Transcribe — 本地路径
-asrlab transcribe audio.wav -m cohere-transcribe --model-path "H:\Models\CohereLabs\cohere-transcribe-03-2026" --device cuda --lang ja
+asrlab transcribe audio.wav -m cohere-transcribe --model-path local/model --lang ja
 
 # 输出 SRT 字幕
 asrlab transcribe audio.wav -m whisper --model-path large-v3 -f json,srt
 
+# 批量处理
+asrlab transcribe ./audio_dir/ -m faster-whisper -d ./results --batch
+
 # ── 对齐 ──
-
-# Qwen3 对齐器（通用，适合无时间戳的听写结果）
-asrlab align audio.wav result.json --aligner qwen3_align --model-path "H:\Models\Qwen\Qwen3-ForcedAligner-0.6B" --device cuda
-
-# Whisper 对齐器（仅适用 Whisper 系列听写结果）
-asrlab align audio.wav result.json --aligner whisper_align --model-path large-v3 --device cuda
-
-# 输出 SRT
-asrlab align audio.wav result.json --aligner qwen3_align -f srt,json
+asrlab align audio.wav result.json -d ./output -f srt,json
+asrlab align audio.wav result.json --aligner qwen3_align --device cuda
+asrlab align audio.wav -t "transcript text" -l ja
 ```
 
 ### 配置文件
 
-`asrlab init` 生成 `config.yaml`，支持所有参数预设。使用 `-c` 加载后，CLI 参数会覆盖配置中的对应项。
+`asrlab init` 生成 `config.yaml`。CLI 参数优先级高于配置项。
 
 ```yaml
 transcriber:
@@ -137,8 +121,8 @@ transcriber:
   device: cuda                # cuda | cpu | vulkan | auto
   compute_type: float16       # float16 | int8 | float32
   language: auto              # auto | zh | en | ja | ko ...
-  beam_size: 5
-  extras:                     # 透传底层库特有参数
+  beam_size: 3                # 搜索宽度（越小越快）
+  extras:
     temperature: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
     vad_filter: true
 
@@ -154,7 +138,8 @@ audio:
 
 output:
   formats: [json]             # json, srt, txt
-  dir: ./output
+  dir: ""
+  name: ""
   keep_segments: false
 ```
 
@@ -170,14 +155,15 @@ asrlab transcribe <音频文件|目录> [选项]
 
 | 选项 | 默认值 | 说明 |
 |---|---|---|
-| `-m, --model` | `whisper` | 引擎名（见上表） |
+| `-m, --model` | `whisper` | 引擎名（见引擎表） |
 | `--model-path` | `""` | 模型路径 / HF ID / stable-ts 尺寸名 |
 | `-f, --formats` | `json` | 输出格式，逗号分隔 |
 | `-l, --lang` | `auto` | 语言代码 |
-| `--aligner` | — | 对齐器名称（可选，输出带时间戳） |
+| `--aligner` | — | 对齐器名称（可选） |
 | `-c, --config` | — | 配置文件路径 |
-| `-o, --output-dir` | `./output` | 输出目录 |
-| `--batch` | — | 批量处理目录下所有音频 |
+| `-d, --dir` | `""` | 输出目录（空=与音频同目录） |
+| `-o, --output` | `""` | 输出文件名 stem（不含扩展名） |
+| `--batch` | — | 批量处理目录（仅允许 -d） |
 | `--device` | `auto` | `cuda` / `cpu` / `vulkan` / `auto` |
 | `--compute-type` | `float16` | `float16` / `int8` / `float32` |
 
@@ -189,55 +175,97 @@ asrlab align <音频文件> [参考文件] [选项]
 
 | 选项 | 默认值 | 说明 |
 |---|---|---|
-| `参考文件` | — | `.json` / `.srt` / `.vtt` / `.txt` 文件（自动检测格式） |
+| `参考文件` | — | `.json` / `.srt` / `.vtt` / `.txt`（自动检测） |
 | `-t, --text` | — | 直接指定文本（与参考文件互斥） |
 | `-f, --formats` | `json` | 输出格式 |
-| `-l, --lang` | `auto` | 语言代码（纯文本 `.txt` 时建议指定） |
+| `-l, --lang` | `auto` | 语言代码 |
 | `--aligner` | `qwen3_align` | 对齐器名称 |
-| `--model-path` | `""` | 对齐模型路径 / HF ID |
+| `--model-path` | `""` | 对齐模型路径 |
+| `-d, --dir` | `""` | 输出目录 |
+| `-o, --output` | `""` | 输出文件名 stem |
+| `-c, --config` | — | 配置文件路径 |
 | `--device` | `auto` | `cuda` / `cpu` / `auto` |
 
 ### 其他命令
 
 ```bash
-# 列出可用引擎
-asrlab list transcribers
-asrlab list aligners
-
-# 生成配置模板
-asrlab init
+asrlab list transcribers   # 列出所有听写引擎
+asrlab list aligners       # 列出所有对齐器
+asrlab init                # 生成配置模板
 ```
+
+## 输出控制
+
+`-d` 和 `-o` 分别控制输出目录和文件名：
+
+```bash
+# 与音频同目录（默认）
+asrlab transcribe audio.wav -m whisper
+# → audio.json
+
+# 指定目录
+asrlab transcribe audio.wav -m whisper -d ./results
+# → ./results/audio.json
+
+# 指定文件名
+asrlab transcribe audio.wav -m whisper -o transcript
+# → transcript.json
+
+# 同时指定
+asrlab transcribe audio.wav -m whisper -d ./results -o transcript
+# → ./results/transcript.json
+```
+
+## 优化特性
+
+### 标点归一化
+
+自动根据语言调整标点风格：
+- **日语/中文**：全角 `。！？、`
+- **英语/西方**：半角 `. ! ? ,`
+
+无需额外配置，在输出前自动处理。
+
+### VAD 分段策略
+
+两步式智能分段：
+1. VAD 检测 → 合并间距 < 2.0s 的语音区 → 每块最长 30s
+2. 块间 0.5s 重叠避免边界截断：避免数百次逐句模型调用
+
+### 段间上下文
+
+Whisper/Faster-Whisper 逐段听写时自动传递段末文本作为 `initial_prompt`，减少边界吞音和断裂。
 
 ## 项目结构
 
 ```
 ASRLabs/
 ├── asrlabs/                     # 核心包
-│   ├── __init__.py              # 版本、入口
 │   ├── cli.py                   # Click 命令行
 │   ├── config.py                # YAML 配置解析
 │   ├── models.py                # 数据模型 (Word, Segment, TranscriptionResult)
 │   ├── transcribe/              # 听写后端（策略模式）
 │   │   ├── base.py              #   BaseTranscriber + 注册表
-│   │   ├── whisper.py           #   OpenAI Whisper
+│   │   ├── whisper.py           #   OpenAI Whisper (stable-ts)
 │   │   ├── faster_whisper.py    #   Faster Whisper (CTranslate2)
 │   │   ├── qwen3_asr.py         #   Qwen3 ASR
 │   │   ├── granite_speech.py    #   IBM Granite Speech
 │   │   └── cohere.py            #   Cohere Transcribe
-│   ├── align/                   # 对齐后端（策略模式）
+│   ├── align/                   # 对齐后端
 │   │   ├── base.py              #   BaseAligner + 注册表
 │   │   ├── whisper_align.py     #   Whisper 对齐器
 │   │   └── qwen3_align.py       #   Qwen3 Forced Aligner
 │   ├── pipeline/                # 编排层
 │   │   ├── runner.py            #   Runner 主编排器
-│   │   └── preprocess.py        #   重采样 + Silero VAD 分段
-│   └── utils/                   # 工具函数
-│       ├── audio.py             #   音频加载
-│       └── formats.py           #   SRT/JSON 解析
+│   │   └── preprocess.py        #   重采样 + Silero VAD
+│   └── utils/
+│       ├── audio.py             #   音频加载 (soundfile)
+│       ├── formats.py           #   SRT/JSON 解析
+│       └── postprocess.py       #   标点归一化
 ├── sample_project/              # 示例项目
-├── tests/                       # 单元测试
-├── requirements.txt
+├── tests/                       # 单元测试 (27 tests)
 ├── pyproject.toml
+├── requirements.txt
 └── README.md
 ```
 
@@ -251,20 +279,16 @@ from asrlabs.transcribe.base import BaseTranscriber, register_transcriber
 
 @register_transcriber
 class MyModelTranscriber(BaseTranscriber):
-    name = "my-model"             # CLI 使用 -m my-model
+    name = "my-model"
     display_name = "My ASR Model"
-    supports_timestamps = False   # 模型是否自带时间戳
+    supports_timestamps = False
     recommended_aligner = "qwen3_align"
 
-    def load_model(self) -> None:
-        model_path = self.model_path or "default/model/id"
-        # 加载模型...
-
-    def transcribe(self, audio, **kwargs):
-        # 返回 TranscriptionResult...
+    def load_model(self) -> None: ...
+    def transcribe(self, audio, **kwargs) -> TranscriptionResult: ...
 ```
 
-然后在 `asrlabs/transcribe/__init__.py` 的导入列表中加入一行即可。
+然后在 `asrlabs/transcribe/__init__.py` 导入即可。
 
 ## 依赖环境
 
@@ -272,18 +296,18 @@ class MyModelTranscriber(BaseTranscriber):
 |---|---|---|
 | Python | >= 3.10 | |
 | PyTorch | >= 2.12 | CUDA 13.0 推荐 |
-| transformers | >= 4.52, < 5.0 | Qwen3 ASR 兼容性要求 |
+| transformers | >= 4.52, < 5.0 | Qwen3 ASR 兼容性约束 |
 | stable-ts | >= 2.17 | Whisper / Faster Whisper 后端 |
 | faster-whisper | >= 1.0 | CTranslate2 引擎 |
 | qwen-asr | >= 0.0.6 | Qwen3 ASR + ForcedAligner |
 | soundfile | >= 0.12 | 音频 I/O |
-| nvidia-cublas-cu12 | — | CUDA 13 环境下为 CTranslate2 提供 CUDA 12 DLL |
+| nvidia-cublas-cu12 | — | CUDA 13 下为 CTranslate2 提供 CUDA 12 DLL |
 
-> **注意**：`transformers` 需锁定 `< 5.0`，因 `qwen-asr` 尚不兼容 5.x 的配置系统和生成 API。等待 qwen-asr 更新后可移除此限制。
+> `transformers` 锁定 `< 5.0` 因 `qwen-asr 0.0.6` 不兼容 5.x 的配置与生成 API。等待 qwen-asr 更新后移除。
 
 ## 致谢
 
-本项目结构参照 [GalTransl](https://github.com/GalTransl/GalTransl) 设计，受益于其策略模式 + 编排层的清晰架构。感谢以下开源项目：
+参照 [GalTransl](https://github.com/GalTransl/GalTransl) 设计。感谢以下开源项目：
 
 - [stable-ts](https://github.com/jianfch/stable-ts) — Whisper 词级时间戳增强
 - [faster-whisper](https://github.com/SYSTRAN/faster-whisper) — CTranslate2 加速推理
@@ -294,4 +318,4 @@ class MyModelTranscriber(BaseTranscriber):
 
 ## License
 
-此项目使用 [MIT License](LICENSE).
+MIT

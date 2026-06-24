@@ -231,12 +231,17 @@ class Runner:
     def _save_output(self, audio: Path, result: TranscriptionResult):
         """按配置写出所有格式
 
+        - cfg.output.dir 为空 → 与音频同目录
         - cfg.output.name 非空 → <dir>/<name>.<fmt>
         - cfg.output.name 为空 → <dir>/<audio.stem>.<fmt>
         """
-        out_dir = Path(self.cfg.output.dir)
-        if not out_dir.is_absolute():
-            out_dir = audio.parent / out_dir
+        raw_dir = self.cfg.output.dir
+        if raw_dir:
+            out_dir = Path(raw_dir)
+            if not out_dir.is_absolute():
+                out_dir = audio.parent / out_dir
+        else:
+            out_dir = audio.parent
         out_dir.mkdir(parents=True, exist_ok=True)
 
         stem = self.cfg.output.name or audio.stem

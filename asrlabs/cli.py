@@ -94,7 +94,7 @@ def transcribe(audio, model, model_path, formats, lang, aligner, config_path,
             audio=AudioConfig(),
             output=OutputConfig(
                 formats=[f.strip() for f in formats.split(",")],
-                dir=dir or "./output",
+                dir=dir or "",
                 name=output or "",
             ),
             logging=LoggingConfig(),
@@ -290,7 +290,7 @@ audio:
 # ── 输出 ──
 output:
   formats: [json]                   # transcribe 默认仅 json；-f json,srt,txt 追加
-  dir: ./output                     # 输出目录（-d 覆盖）
+  dir: ""                           # 输出目录（空=同音频目录，-d 覆盖）
   name: ""                          # 输出文件名 stem（-o 覆盖，空则用输入文件名）
   keep_segments: false
 
