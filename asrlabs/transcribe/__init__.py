@@ -6,6 +6,7 @@
     from asrlabs.transcribe import Qwen3ASRTranscriber
     from asrlabs.transcribe import GraniteSpeechTranscriber
     from asrlabs.transcribe import CohereTranscriber
+    from asrlabs.transcribe import KotobaWhisperTranscriber
 """
 
 from asrlabs.transcribe.base import (  # noqa: F401 — re-export
@@ -22,6 +23,7 @@ from asrlabs.transcribe.faster_whisper import FasterWhisperTranscriber  # noqa: 
 from asrlabs.transcribe.qwen3_asr import Qwen3ASRTranscriber  # noqa: F401
 from asrlabs.transcribe.granite_speech import GraniteSpeechTranscriber  # noqa: F401
 from asrlabs.transcribe.cohere import CohereTranscriber  # noqa: F401  # 本地模式
+from asrlabs.transcribe.kotoba import KotobaWhisperTranscriber  # noqa: F401
 
 __all__ = [
     "TRANSCRIBER_REGISTRY",
@@ -34,4 +36,5 @@ __all__ = [
     "Qwen3ASRTranscriber",
     "GraniteSpeechTranscriber",
     "CohereTranscriber",
+    "KotobaWhisperTranscriber",
 ]
