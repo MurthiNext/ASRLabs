@@ -13,7 +13,7 @@ import yaml
 @dataclass
 class TranscriberConfig:
     """听写模型配置"""
-    model: str = "whisper"  # 引擎名: whisper, faster-whisper, qwen3-asr, granite-speech
+    model: str = "whisper"  # 引擎名: whisper, faster-whisper, qwen3-asr, granite-speech, kotoba-whisper, ark-asr
     model_path: str = ""    # 本地模型路径/ID，空则使用引擎默认
     device: str = "auto"
     compute_type: str = "float16"
