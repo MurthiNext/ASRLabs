@@ -21,7 +21,7 @@ class Qwen3Aligner(BaseAligner):
 
     对齐策略:
       1. 合并全部 segment 文本，按字符数比例切分为 < 5 分钟的块
-      2. 每块提取音频 → 重采样到 16kHz → 写临时 WAV → align()
+      2. 每块提取音频 -> 重采样到 16kHz -> 写临时 WAV -> align()
       3. 对齐结果直接作为新 segment（带词级时间戳）
     """
 
@@ -67,7 +67,7 @@ class Qwen3Aligner(BaseAligner):
 
         chunk_plans = self._plan_chunks(valid_segs, total_chars, total_duration)
         logger.info(
-            "对齐: %d segments, %d 字符, %.1fs → %d 个块",
+            "对齐: %d segments, %d 字符, %.1fs -> %d 个块",
             len(valid_segs), total_chars, total_duration, len(chunk_plans),
         )
 
@@ -79,7 +79,7 @@ class Qwen3Aligner(BaseAligner):
                             i + 1, len(chunk_plans),
                             plan["start_sec"], plan["end_sec"], len(chunk_text))
 
-                # 提取音频块 → 重采样到 16kHz → 写临时 WAV
+                # 提取音频块 -> 重采样到 16kHz -> 写临时 WAV
                 chunk_audio = self._read_audio_chunk(
                     audio, plan["start_sec"], plan["end_sec"], total_duration,
                 )

@@ -10,14 +10,14 @@ _CJK_LANGS = frozenset({
 
 # ── 标点映射表 ──
 
-# 半角 → 全角 (CJK)
+# 半角 -> 全角 (CJK)
 _HALF_TO_FULL = str.maketrans({
     ",": "，", ".": "。", "!": "！", "?": "？",
     ":": "：", ";": "；", "-": "—", "~": "〜",
     "(": "（", ")": "）",
 })
 
-# 全角 → 半角 (Western)
+# 全角 -> 半角 (Western)
 _FULL_TO_HALF = str.maketrans({
     "，": ",", "。": ".", "！": "!", "？": "?",
     "：": ":", "；": ";", "—": "-", "〜": "~",
@@ -51,13 +51,13 @@ def normalize_punctuation(text: str, language: str) -> str:
 
 def _fix_cjk_sequences(text: str) -> str:
     """修复 CJK 标点序列的常见问题"""
-    # 重复标点压缩（！→！, ？？→？）
+    # 重复标点压缩（！->！, ？？->？）
     text = re.sub(r"！{2,}", "！", text)
     text = re.sub(r"？{2,}", "？", text)
-    text = re.sub(r"。{2,}", "……", text)  # 多个句号→省略号
+    text = re.sub(r"。{2,}", "……", text)  # 多个句号->省略号
     # 连续标点去重
     text = re.sub(r"、、+", "、", text)
-    # 空格→顿号不是合理变换，跳过
+    # 空格->顿号不是合理变换，跳过
     # 引号匹配
     return text
 

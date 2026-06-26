@@ -49,7 +49,7 @@ class Qwen3ASRTranscriber(BaseTranscriber):
         if language == "auto":
             language = None
 
-        # numpy 数组 → 临时 WAV
+        # numpy 数组 -> 临时 WAV
         if isinstance(audio, np.ndarray):
             import soundfile as sf
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:

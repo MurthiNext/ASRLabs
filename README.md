@@ -35,6 +35,7 @@ ASRLabs 是一个 Python ASR 工具箱，参照 [GalTransl](https://github.com/G
 ## 支持引擎
 
 ### 听写引擎
+受限于 Qwen3ASR 较低的 transformers 后端版本支持，无法使用 transformers 5.x 后端，因此部分引擎会启用 trust_remote_code 或 patch 依赖库来解决兼容性问题，请知悉此内容。
 
 | 引擎 | `-m` 参数 | 后端 | 时间戳 | Vulkan | 推荐对齐器 |
 |---|---|---|---|---|---|
@@ -43,13 +44,15 @@ ASRLabs 是一个 Python ASR 工具箱，参照 [GalTransl](https://github.com/G
 | Qwen3 ASR | `qwen3-asr` | qwen-asr | ❌ | ❌ | `qwen3_align` |
 | IBM Granite Speech | `granite-speech` | transformers | ❌ | ❌ | `qwen3_align` |
 | Cohere Transcribe | `cohere-transcribe` | transformers | ❌ | ❌ | `qwen3_align` |
-| Kotoba Whisper v2.2 | `kotoba-whisper` | transformers pipeline + `trust_remote_code` | ✅ 内置 | ❌ | — |
+| Kotoba Whisper | `kotoba-whisper` | transformers | ✅ 内置 | ❌ | — |
+| ARK-ASR | `ark-asr` | transformers | ❌ | ❌ | `qwen3_align` |
 
 > **Whisper / Faster Whisper** 统一使用 [stable-ts](https://github.com/jianfch/stable-ts) 作为后端，获得更精准的静音抑制、VAD 预处理和词级时间戳。
 >
 > **Faster Whisper** 独家支持 `--device vulkan`（CTranslate2 后端加速）。
 >
-> **Kotoba Whisper v2.2** 是日语特化 Distil-Whisper，通过 transformers pipeline + trust_remote_code 加载，pipeline 内部自带 15s 子分块与批量推理。语言默认 `ja`，与其它引擎的 `auto` 默认不同。
+> **Kotoba Whisper** 是日语特化 Distil-Whisper，通过 transformers pipeline 加载，pipeline 内部自带 15s 子分块与批量推理。语言默认 `ja`，与其它引擎的 `auto` 默认不同。
+>
 
 ### 对齐引擎
 
@@ -95,6 +98,7 @@ asrlab transcribe audio.wav -m faster-whisper -o my_result -d ./output --device 
 asrlab transcribe audio.wav -m qwen3-asr --model-path Qwen/Qwen3-ASR-1.7B --device cuda
 asrlab transcribe audio.wav -m cohere-transcribe --model-path local/model --lang ja
 asrlab transcribe audio.wav -m kotoba-whisper -f json,srt
+asrlab transcribe audio.wav -m ark-asr --model-path AutoArk-AI/ARK-ASR-3B --device cuda
 
 # 输出 SRT 字幕
 asrlab transcribe audio.wav -m whisper --model-path large-v3 -f json,srt
@@ -249,7 +253,8 @@ ASRLabs/
 │   │   ├── qwen3_asr.py         #   Qwen3 ASR
 │   │   ├── granite_speech.py    #   IBM Granite Speech
 │   │   ├── cohere.py            #   Cohere Transcribe
-│   │   └── kotoba.py            #   Kotoba Whisper v2.2 (日本語)
+│   │   ├── kotoba.py            #   Kotoba Whisper
+│   │   └── ark_asr.py           #   ARK-ASR (transformers + chat template)
 │   ├── align/                   # 对齐后端
 │   │   ├── base.py              #   BaseAligner + 注册表
 │   │   ├── whisper_align.py     #   Whisper 对齐器
@@ -302,7 +307,7 @@ class MyModelTranscriber(BaseTranscriber):
 | soundfile | >= 0.12 | 音频 I/O |
 | nvidia-cublas-cu12 | — | CUDA 13 下为 CTranslate2 提供 CUDA 12 DLL |
 
-> `transformers` 锁定 `< 5.0` 因 `qwen-asr 0.0.6` 不兼容 5.x 的配置与生成 API。Kotoba Whisper 通过 transformers pipeline + `trust_remote_code` 加载，无额外依赖。等待 qwen-asr 更新后移除。
+> `transformers` 锁定 `< 5.0` 因 `qwen-asr 0.0.6` 不兼容 5.x 的配置与生成 API。需要 `transformers 5.x` 的后端可能难以实现。
 
 ## 致谢
 
@@ -314,6 +319,7 @@ class MyModelTranscriber(BaseTranscriber):
 - [Cohere Transcribe](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026) — Conformer-based ASR
 - [IBM Granite Speech](https://huggingface.co/ibm-granite/granite-speech-4.1-2b) — IBM 语音模型
 - [Kotoba Whisper v2.2](https://huggingface.co/kotoba-tech/kotoba-whisper-v2.2) — 日语特化 Distil-Whisper
+- [ARK-ASR](https://huggingface.co/AutoArk-AI/ARK-ASR-3B) — 3B 多语言 ASR (Whisper 编码器 + Qwen 解码器)
 - [Silero VAD](https://github.com/snakers4/silero-vad) — 语音活动检测
 
 ## License
