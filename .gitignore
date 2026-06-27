@@ -1,13 +1,14 @@
 # Python
-.venv
-*.egg-info
+.venv/
+*.egg-info/
 __pycache__/
 *.pyc
 .pytest_cache
 
 # Dev
-docs
-local_test
+.vscode/
+docs/
+local_test/
 
 # AI
 .claude

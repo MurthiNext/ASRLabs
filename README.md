@@ -9,13 +9,7 @@
 - [项目简介](#项目简介)
 - [支持引擎](#支持引擎)
 - [快速开始](#快速开始)
-  - [安装](#安装)
-  - [基本使用](#基本使用)
-  - [配置文件](#配置文件)
 - [命令参考](#命令参考)
-  - [transcribe —— 听写](#transcribe-命令行参考)
-  - [align —— 对齐](#align-命令行参考)
-  - [list / init](#其他命令)
 - [输出控制](#输出控制)
 - [优化特性](#优化特性)
 - [项目结构](#项目结构)
@@ -35,31 +29,31 @@ ASRLabs 是一个 Python ASR 工具箱，参照 [GalTransl](https://github.com/G
 ## 支持引擎
 
 ### 听写引擎
+
 受限于 Qwen3ASR 较低的 transformers 后端版本支持，无法使用 transformers 5.x 后端，因此部分引擎会启用 trust_remote_code 或 patch 依赖库来解决兼容性问题，请知悉此内容。
 
-| 引擎 | `-m` 参数 | 后端 | 时间戳 | Vulkan | 推荐对齐器 |
-|---|---|---|---|---|---|
-| OpenAI Whisper | `whisper` | stable-ts | ✅ 内置 | ❌ | `whisper_align` |
-| Faster Whisper | `faster-whisper` | stable-ts (CTranslate2) | ✅ 内置 | ✅ | `whisper_align` |
-| Qwen3 ASR | `qwen3-asr` | qwen-asr | ❌ | ❌ | `qwen3_align` |
-| IBM Granite Speech | `granite-speech` | transformers | ❌ | ❌ | `qwen3_align` |
-| Cohere Transcribe | `cohere-transcribe` | transformers | ❌ | ❌ | `qwen3_align` |
-| Kotoba Whisper | `kotoba-whisper` | transformers | ✅ 内置 | ❌ | — |
-| ARK-ASR | `ark-asr` | transformers | ❌ | ❌ | `qwen3_align` |
+| 引擎               | `-m` 参数           | 后端                    | 时间戳  | Vulkan | 推荐对齐器      |
+| ------------------ | ------------------- | ----------------------- | ------- | ------ | --------------- |
+| OpenAI Whisper     | `whisper`           | stable-ts               | ✅ 内置 | ❌     | `whisper_align` |
+| Faster Whisper     | `faster-whisper`    | stable-ts (CTranslate2) | ✅ 内置 | ✅     | `whisper_align` |
+| Qwen3 ASR          | `qwen3-asr`         | qwen-asr                | ❌      | ❌     | `qwen3_align`   |
+| IBM Granite Speech | `granite-speech`    | transformers            | ❌      | ❌     | `qwen3_align`   |
+| Cohere Transcribe  | `cohere-transcribe` | transformers            | ❌      | ❌     | `qwen3_align`   |
+| Kotoba Whisper     | `kotoba-whisper`    | transformers            | ✅ 内置 | ❌     | —               |
+| ARK-ASR            | `ark-asr`           | transformers            | ❌      | ❌     | `qwen3_align`   |
 
 > **Whisper / Faster Whisper** 统一使用 [stable-ts](https://github.com/jianfch/stable-ts) 作为后端，获得更精准的静音抑制、VAD 预处理和词级时间戳。
 >
 > **Faster Whisper** 独家支持 `--device vulkan`（CTranslate2 后端加速）。
 >
 > **Kotoba Whisper** 是日语特化 Distil-Whisper，通过 transformers pipeline 加载，pipeline 内部自带 15s 子分块与批量推理。语言默认 `ja`，与其它引擎的 `auto` 默认不同。
->
 
 ### 对齐引擎
 
-| 对齐器 | `--aligner` 参数 | 后端 | 适用模型 | 限制 |
-|---|---|---|---|---|
-| Whisper Align | `whisper_align` | stable-ts align() + refine() | 仅 whisper / faster-whisper | 需同款模型权重 |
-| Qwen3 Forced Aligner | `qwen3_align` | qwen-asr | 任意模型 | GPU, 单段 ≤ 5 分钟 |
+| 对齐器               | `--aligner` 参数 | 后端                         | 适用模型                    | 限制               |
+| -------------------- | ---------------- | ---------------------------- | --------------------------- | ------------------ |
+| Whisper Align        | `whisper_align`  | stable-ts align() + refine() | 仅 whisper / faster-whisper | 需同款模型权重     |
+| Qwen3 Forced Aligner | `qwen3_align`    | qwen-asr                     | 任意模型                    | GPU, 单段 ≤ 5 分钟 |
 
 > 听写产出的 JSON 直接作为参考文件传给对齐器，无需额外格式转换。
 
@@ -155,19 +149,19 @@ output:
 asrlab transcribe <音频文件|目录> [选项]
 ```
 
-| 选项 | 默认值 | 说明 |
-|---|---|---|
-| `-m, --model` | `whisper` | 引擎名（见引擎表） |
-| `--model-path` | `""` | 模型路径 / HF ID / stable-ts 尺寸名 |
-| `-f, --formats` | `json` | 输出格式，逗号分隔 |
-| `-l, --lang` | `auto` | 语言代码 |
-| `--aligner` | — | 对齐器名称（可选） |
-| `-c, --config` | — | 配置文件路径 |
-| `-d, --dir` | `""` | 输出目录（空=与音频同目录） |
-| `-o, --output` | `""` | 输出文件名 stem（不含扩展名） |
-| `--batch` | — | 批量处理目录（仅允许 -d） |
-| `--device` | `auto` | `cuda` / `cpu` / `vulkan` / `auto` |
-| `--compute-type` | `float16` | `float16` / `int8` / `float32` |
+| 选项             | 默认值    | 说明                                |
+| ---------------- | --------- | ----------------------------------- |
+| `-m, --model`    | `whisper` | 引擎名（见引擎表）                  |
+| `--model-path`   | `""`      | 模型路径 / HF ID / stable-ts 尺寸名 |
+| `-f, --formats`  | `json`    | 输出格式，逗号分隔                  |
+| `-l, --lang`     | `auto`    | 语言代码                            |
+| `--aligner`      | —         | 对齐器名称（可选）                  |
+| `-c, --config`   | —         | 配置文件路径                        |
+| `-d, --dir`      | `""`      | 输出目录（空=与音频同目录）         |
+| `-o, --output`   | `""`      | 输出文件名 stem（不含扩展名）       |
+| `--batch`        | —         | 批量处理目录（仅允许 -d）           |
+| `--device`       | `auto`    | `cuda` / `cpu` / `vulkan` / `auto`  |
+| `--compute-type` | `float16` | `float16` / `int8` / `float32`      |
 
 ### `align` 命令行参考
 
@@ -175,18 +169,18 @@ asrlab transcribe <音频文件|目录> [选项]
 asrlab align <音频文件> [参考文件] [选项]
 ```
 
-| 选项 | 默认值 | 说明 |
-|---|---|---|
-| `参考文件` | — | `.json` / `.srt` / `.vtt` / `.txt`（自动检测） |
-| `-t, --text` | — | 直接指定文本（与参考文件互斥） |
-| `-f, --formats` | `json` | 输出格式 |
-| `-l, --lang` | `auto` | 语言代码 |
-| `--aligner` | `qwen3_align` | 对齐器名称 |
-| `--model-path` | `""` | 对齐模型路径 |
-| `-d, --dir` | `""` | 输出目录 |
-| `-o, --output` | `""` | 输出文件名 stem |
-| `-c, --config` | — | 配置文件路径 |
-| `--device` | `auto` | `cuda` / `cpu` / `auto` |
+| 选项            | 默认值        | 说明                                           |
+| --------------- | ------------- | ---------------------------------------------- |
+| `参考文件`      | —             | `.json` / `.srt` / `.vtt` / `.txt`（自动检测） |
+| `-t, --text`    | —             | 直接指定文本（与参考文件互斥）                 |
+| `-f, --formats` | `json`        | 输出格式                                       |
+| `-l, --lang`    | `auto`        | 语言代码                                       |
+| `--aligner`     | `qwen3_align` | 对齐器名称                                     |
+| `--model-path`  | `""`          | 对齐模型路径                                   |
+| `-d, --dir`     | `""`          | 输出目录                                       |
+| `-o, --output`  | `""`          | 输出文件名 stem                                |
+| `-c, --config`  | —             | 配置文件路径                                   |
+| `--device`      | `auto`        | `cuda` / `cpu` / `auto`                        |
 
 ### 其他命令
 
@@ -223,6 +217,7 @@ asrlab transcribe audio.wav -m whisper -d ./results -o transcript
 ### 标点归一化
 
 自动根据语言调整标点风格：
+
 - **日语/中文**：全角 `。！？、`
 - **英语/西方**：半角 `. ! ? ,`
 
@@ -231,6 +226,7 @@ asrlab transcribe audio.wav -m whisper -d ./results -o transcript
 ### VAD 分段策略
 
 两步式智能分段：
+
 1. VAD 检测 → 合并间距 < 2.0s 的语音区 → 每块最长 30s
 2. 块间 0.5s 重叠避免边界截断：避免数百次逐句模型调用
 
@@ -296,16 +292,16 @@ class MyModelTranscriber(BaseTranscriber):
 
 ## 依赖环境
 
-| 依赖 | 版本 | 说明 |
-|---|---|---|
-| Python | >= 3.10 | |
-| PyTorch | >= 2.12 | CUDA 13.0 推荐 |
-| transformers | >= 4.52, < 5.0 | Qwen3 ASR 兼容性约束 |
-| stable-ts | >= 2.17 | Whisper / Faster Whisper 后端 |
-| faster-whisper | >= 1.0 | CTranslate2 引擎 |
-| qwen-asr | >= 0.0.6 | Qwen3 ASR + ForcedAligner |
-| soundfile | >= 0.12 | 音频 I/O |
-| nvidia-cublas-cu12 | — | CUDA 13 下为 CTranslate2 提供 CUDA 12 DLL |
+| 依赖               | 版本           | 说明                                      |
+| ------------------ | -------------- | ----------------------------------------- |
+| Python             | >= 3.10        |                                           |
+| PyTorch            | >= 2.12        | CUDA 13.0 推荐                            |
+| transformers       | >= 4.52, < 5.0 | Qwen3 ASR 兼容性约束                      |
+| stable-ts          | >= 2.17        | Whisper / Faster Whisper 后端             |
+| faster-whisper     | >= 1.0         | CTranslate2 引擎                          |
+| qwen-asr           | >= 0.0.6       | Qwen3 ASR + ForcedAligner                 |
+| soundfile          | >= 0.12        | 音频 I/O                                  |
+| nvidia-cublas-cu12 | —              | CUDA 13 下为 CTranslate2 提供 CUDA 12 DLL |
 
 > `transformers` 锁定 `< 5.0` 因 `qwen-asr 0.0.6` 不兼容 5.x 的配置与生成 API。需要 `transformers 5.x` 的后端可能难以实现。
 
@@ -324,4 +320,4 @@ class MyModelTranscriber(BaseTranscriber):
 
 ## License
 
-MIT
+此项目使用 [MIT License](LICENSE) 开源。
