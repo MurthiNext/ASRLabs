@@ -54,8 +54,11 @@ ASRLabs 是一个 Python ASR 工具箱，参照 [GalTransl](https://github.com/G
 | -------------------- | ---------------- | ---------------------------- | --------------------------- | ------------------ |
 | Whisper Align        | `whisper_align`  | stable-ts align() + refine() | 仅 whisper / faster-whisper | 需同款模型权重     |
 | Qwen3 Forced Aligner | `qwen3_align`    | qwen-asr                     | 任意模型                    | GPU, 单段 ≤ 5 分钟 |
+| CTC Forced Aligner   | `ctc_align`      | ctc-forced-aligner (MMS/Wav2Vec2/HuBERT) | 任意模型          | 需 `[ctc]` extra + ffmpeg |
 
 > 听写产出的 JSON 直接作为参考文件传给对齐器，无需额外格式转换。
+>
+> **CTC Forced Aligner** 基于 [MahmoudAshraf97/ctc-forced-aligner](https://github.com/MahmoudAshraf97/ctc-forced-aligner)，内置 uroman 罗马化，支持 1136+ 语言。CJK (zh/ja/ko) 自动 char 级对齐，拉丁语系 word 级。需 `pip install -e .[ctc]`。默认模型 MMS-300m-1130 为 **CC-BY-NC 4.0（非商用）**，商用请通过 `--model-path` 指定 MIT 模型（如 `facebook/wav2vec2-large-960h-lv60-self`）。
 
 ## 快速开始
 
@@ -302,6 +305,8 @@ class MyModelTranscriber(BaseTranscriber):
 | qwen-asr           | >= 0.0.6       | Qwen3 ASR + ForcedAligner                 |
 | soundfile          | >= 0.12        | 音频 I/O                                  |
 | nvidia-cublas-cu12 | —              | CUDA 13 下为 CTranslate2 提供 CUDA 12 DLL |
+| ctc-forced-aligner | optional `[ctc]` | CTC 对齐后端, 需 ffmpeg + C++ 编译环境    |
+| uroman / nltk / Unidecode | optional `[ctc]` | CTC 对齐器的罗马化与文本规范化依赖  |
 
 > `transformers` 锁定 `< 5.0` 因 `qwen-asr 0.0.6` 不兼容 5.x 的配置与生成 API。需要 `transformers 5.x` 的后端可能难以实现。
 
@@ -317,6 +322,7 @@ class MyModelTranscriber(BaseTranscriber):
 - [Kotoba Whisper v2.2](https://huggingface.co/kotoba-tech/kotoba-whisper-v2.2) — 日语特化 Distil-Whisper
 - [ARK-ASR](https://huggingface.co/AutoArk-AI/ARK-ASR-3B) — 3B 多语言 ASR (Whisper 编码器 + Qwen 解码器)
 - [Silero VAD](https://github.com/snakers4/silero-vad) — 语音活动检测
+- [ctc-forced-aligner](https://github.com/MahmoudAshraf97/ctc-forced-aligner) — Wav2Vec2/HuBERT/MMS CTC 强制对齐
 
 ## License
 

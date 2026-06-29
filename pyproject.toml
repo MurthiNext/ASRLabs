@@ -25,6 +25,12 @@ dependencies = [
 
 [project.optional-dependencies]
 cohere = ["cohere>=5.21"]
+ctc = [
+    "ctc-forced-aligner @ git+https://github.com/MahmoudAshraf97/ctc-forced-aligner.git",
+    "uroman>=1.3.1",
+    "nltk>=3.8",
+    "Unidecode>=1.3",
+]
 
 [project.scripts]
 asrlab = "asrlabs.cli:main"

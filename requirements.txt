@@ -20,3 +20,9 @@ nvidia-cublas-cu12  # CUDA 13 环境需补充 CUDA 12 DLL
 soundfile>=0.12
 sentencepiece>=0.2
 tqdm>=4.0
+
+# ── CTC 对齐器 (optional) ──
+# 启用 ctc_align 对齐器:
+#   pip install -e .[ctc]
+# 需 ffmpeg 在 PATH; 需 C++ 编译环境 (Windows: MSVC Build Tools)
+# 默认模型 MMS-300m-1130 为 CC-BY-NC 4.0 (非商用), 商用请换 MIT 模型
