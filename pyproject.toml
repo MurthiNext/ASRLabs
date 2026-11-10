@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta:__legacy__"
+
+[project]
+name = "asrlabs"
+version = "1.0.1"
+description = "ASR 工具箱——整合多款开源 ASR 模型，开箱即用"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.0",
+    "pyyaml>=6.0",
+    "stable-ts>=2.17",
+    "faster-whisper>=1.0",
+    "qwen-asr>=0.0.1",
+    "transformers>=4.52,<5.0",
+    "torch>=2.12",
+    "torchaudio>=2.11",
+    "numpy>=1.24",
+    "soundfile>=0.12",
+    "tqdm>=4.0",
+    "pysbd>=0.3.4",
+    "sentencepiece>=0.2",
+]
+
+[project.optional-dependencies]
+cohere = ["cohere>=5.21"]
+ctc = [
+    "ctc-forced-aligner @ git+https://github.com/MahmoudAshraf97/ctc-forced-aligner.git",
+    "uroman>=1.3.1",
+    "nltk>=3.8",
+    "Unidecode>=1.3",
+]
+
+[project.scripts]
+asrlabs = "asrlabs.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["asrlabs*"]

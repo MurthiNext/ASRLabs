@@ -1,0 +1,16 @@
+# Python
+.venv/
+dist/
+*.egg-info/
+__pycache__/
+*.pyc
+.pytest_cache
+
+# Dev
+.vscode/
+docs/
+local_test/
+
+# AI
+.claude
+.superpowers
